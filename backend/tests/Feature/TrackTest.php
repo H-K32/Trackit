@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\TrackStatus;
+use App\Models\Activity;
+use App\Models\DailyLog;
 use App\Models\Track;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class TrackTest extends TestCase
@@ -438,5 +441,131 @@ class TrackTest extends TestCase
             ->getJson("/api/tracks/{$track->id}")
             ->assertOk()
             ->assertJsonFragment(['end_date' => '2025-01-30']);
+    }
+
+    // ── include=progress ──────────────────────────────────────────────────────
+
+    public function test_index_without_include_progress_omits_progress_key(): void
+    {
+        [$user, $token] = $this->actingAsUser('UTC');
+        Track::factory()->count(2)->create(['user_id' => $user->id]);
+
+        $response = $this->withHeaders($this->authHeader($token))
+            ->getJson('/api/tracks')
+            ->assertOk();
+
+        $data = $response->json();
+        $this->assertCount(2, $data);
+        foreach ($data as $item) {
+            $this->assertArrayNotHasKey('progress', $item);
+        }
+    }
+
+    public function test_index_with_include_progress_contains_progress_object(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-15 12:00:00', 'UTC'));
+        [$user, $token] = $this->actingAsUser('UTC');
+
+        // 1. Active track with activity and daily log
+        $activeTrack = Track::factory()->create([
+            'user_id'       => $user->id,
+            'start_date'    => '2026-06-10',
+            'duration_days' => 10,
+        ]);
+        $activity = Activity::factory()->count_type()->create([
+            'track_id'     => $activeTrack->id,
+            'daily_target' => 5,
+            'is_required'  => true,
+        ]);
+        DailyLog::factory()->create([
+            'activity_id' => $activity->id,
+            'log_date'    => '2026-06-15',
+            'value'       => 5,
+        ]);
+
+        // 2. Upcoming track
+        $upcomingTrack = Track::factory()->create([
+            'user_id'       => $user->id,
+            'start_date'    => '2026-06-20',
+            'duration_days' => 7,
+        ]);
+
+        $response = $this->withHeaders($this->authHeader($token))
+            ->getJson('/api/tracks?include=progress')
+            ->assertOk();
+
+        $tracks = collect($response->json())->keyBy('id');
+
+        // Check active track progress
+        $activeProgress = $tracks->get($activeTrack->id)['progress'];
+        $this->assertNotNull($activeProgress);
+        $this->assertArrayHasKey('overall_percentage', $activeProgress);
+        $this->assertArrayHasKey('challenge_progress', $activeProgress);
+        $this->assertArrayHasKey('completed_days', $activeProgress);
+        $this->assertArrayHasKey('elapsed_days', $activeProgress);
+        $this->assertArrayHasKey('total_days', $activeProgress);
+        $this->assertArrayHasKey('days_remaining', $activeProgress);
+        $this->assertArrayHasKey('today', $activeProgress);
+
+        $this->assertSame(10, $activeProgress['total_days']);
+        $this->assertSame(6, $activeProgress['elapsed_days']); // June 10 through June 15 = 6 days
+        $this->assertSame(4, $activeProgress['days_remaining']);
+        $this->assertNotNull($activeProgress['today']);
+        $this->assertSame('2026-06-15', $activeProgress['today']['date']);
+        $this->assertSame('completed', $activeProgress['today']['day_status']);
+        $this->assertEquals(100.0, $activeProgress['today']['completion_percentage']);
+
+        // Check upcoming track progress
+        $upcomingProgress = $tracks->get($upcomingTrack->id)['progress'];
+        $this->assertNotNull($upcomingProgress);
+        $this->assertSame(0, $upcomingProgress['elapsed_days']);
+        $this->assertSame(7, $upcomingProgress['total_days']);
+        $this->assertSame(7, $upcomingProgress['days_remaining']);
+        $this->assertSame(0, $upcomingProgress['completed_days']);
+        $this->assertNull($upcomingProgress['today']);
+    }
+
+    public function test_index_include_progress_query_count_stays_small_and_grows_slightly_per_track(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-15 12:00:00', 'UTC'));
+
+        // Case A: 1 track
+        [$userA, $tokenA] = $this->actingAsUser('UTC');
+        $t1 = Track::factory()->create(['user_id' => $userA->id, 'start_date' => '2026-06-10', 'duration_days' => 10]);
+        $a1 = Activity::factory()->count_type()->create(['track_id' => $t1->id]);
+        DailyLog::factory()->create(['activity_id' => $a1->id, 'log_date' => '2026-06-15', 'value' => 5]);
+
+        // Warm up / auth
+        $this->withHeaders($this->authHeader($tokenA))->getJson('/api/tracks?include=progress')->assertOk();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->withHeaders($this->authHeader($tokenA))->getJson('/api/tracks?include=progress')->assertOk();
+        $count1 = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        // Case B: 5 tracks
+        [$userB, $tokenB] = $this->actingAsUser('UTC');
+        for ($i = 0; $i < 5; $i++) {
+            $t = Track::factory()->create(['user_id' => $userB->id, 'start_date' => '2026-06-10', 'duration_days' => 10]);
+            $a = Activity::factory()->count_type()->create(['track_id' => $t->id]);
+            DailyLog::factory()->create(['activity_id' => $a->id, 'log_date' => '2026-06-15', 'value' => 5]);
+        }
+
+        // Warm up / auth
+        $this->withHeaders($this->authHeader($tokenB))->getJson('/api/tracks?include=progress')->assertOk();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->withHeaders($this->authHeader($tokenB))->getJson('/api/tracks?include=progress')->assertOk();
+        $count5 = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        // Both query counts should stay small (<= 5 queries)
+        $this->assertLessThanOrEqual(5, $count1, "Query count for 1 track should be <= 5 (was {$count1})");
+        $this->assertLessThanOrEqual(5, $count5, "Query count for 5 tracks should be <= 5 (was {$count5})");
+        // And the growth per track should be at most 1 query per track (slope <= 1)
+        $growthPerTrack = ($count5 - $count1) / 4;
+        $this->assertLessThanOrEqual(1.0, $growthPerTrack, "Growth per track was {$growthPerTrack}, expected <= 1.0");
     }
 }

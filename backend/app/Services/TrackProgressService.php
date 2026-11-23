@@ -163,7 +163,7 @@ class TrackProgressService
      * Loads all activities and all daily logs for elapsed days in one query
      * each, then iterates days in PHP — no N+1 queries.
      */
-    public function trackSummary(Track $track, string $timezone): array
+    public function trackSummary(Track $track, string $timezone, ?iterable $preloadedLogs = null): array
     {
         $track->loadMissing('activities');
 
@@ -208,12 +208,14 @@ class TrackProgressService
             CarbonPeriod::create($startDate, $elapsedEnd)
         )->map(fn (Carbon $d) => $d->toDateString())->all();
 
-        // Load all logs for elapsed days in one query.
+        // Load all logs for elapsed days in one query (or use preloaded logs).
         $activityIds = $track->activities->pluck('id')->all();
-        $allLogs     = DailyLog::whereIn('activity_id', $activityIds)
-            ->whereIn('log_date', $elapsedDates)
-            ->get()
-            ->groupBy('activity_id');   // Collection keyed by activity_id
+        $allLogs     = $preloadedLogs !== null
+            ? $preloadedLogs
+            : DailyLog::whereIn('activity_id', $activityIds)
+                ->whereIn('log_date', $elapsedDates)
+                ->get()
+                ->groupBy('activity_id');   // Collection keyed by activity_id
 
         // Iterate elapsed days.
         $completedDays       = 0;
