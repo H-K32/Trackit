@@ -15,11 +15,10 @@ class AuthTest extends TestCase
     public function test_register_creates_user_and_returns_token(): void
     {
         $response = $this->postJson('/api/register', [
-            'name'                  => 'Alice',
-            'email'                 => 'alice@example.com',
-            'password'              => 'secret123',
-            'password_confirmation' => 'secret123',
-            'timezone'              => 'America/New_York',
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'secret123',
+            'timezone' => 'America/New_York',
         ]);
 
         $response->assertStatus(201)
@@ -33,33 +32,43 @@ class AuthTest extends TestCase
         User::factory()->create(['email' => 'alice@example.com']);
 
         $this->postJson('/api/register', [
-            'name'                  => 'Alice',
-            'email'                 => 'alice@example.com',
-            'password'              => 'secret123',
-            'password_confirmation' => 'secret123',
-            'timezone'              => 'UTC',
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'secret123',
+            'timezone' => 'UTC',
         ])->assertStatus(422)->assertJsonValidationErrors(['email']);
     }
 
     public function test_register_fails_with_invalid_timezone(): void
     {
         $this->postJson('/api/register', [
-            'name'                  => 'Alice',
-            'email'                 => 'alice@example.com',
-            'password'              => 'secret123',
-            'password_confirmation' => 'secret123',
-            'timezone'              => 'Not/ATimezone',
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'secret123',
+            'timezone' => 'Not/ATimezone',
         ])->assertStatus(422)->assertJsonValidationErrors(['timezone']);
     }
 
-    public function test_register_fails_when_password_not_confirmed(): void
+    public function test_register_does_not_require_password_confirmation(): void
+    {
+        $response = $this->postJson('/api/register', [
+            'name'     => 'Bob',
+            'email'    => 'bob@example.com',
+            'password' => 'secret123',
+            'timezone' => 'UTC',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('users', ['email' => 'bob@example.com']);
+    }
+
+    public function test_register_fails_when_password_too_short(): void
     {
         $this->postJson('/api/register', [
-            'name'                  => 'Alice',
-            'email'                 => 'alice@example.com',
-            'password'              => 'secret123',
-            'password_confirmation' => 'different',
-            'timezone'              => 'UTC',
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'short',
+            'timezone' => 'UTC',
         ])->assertStatus(422)->assertJsonValidationErrors(['password']);
     }
 

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
 import { Dashboard } from './features/dashboard/Dashboard'
@@ -11,10 +12,42 @@ import './theme.css'
 
 function App() {
   const [tracks, setTracks] = useLocalTracks()
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return Boolean(localStorage.getItem('trackit_auth'))
+  })
+
+  const handleLogin = () => {
+    setIsAuthenticated(true)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('trackit_auth')
+    localStorage.removeItem('trackit_user')
+    setIsAuthenticated(false)
+  }
+
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<AppShell />}>
+        <Route
+          path="/auth"
+          element={
+            isAuthenticated ? (
+              <Navigate to="/" replace />
+            ) : (
+              <AuthPage onAuthSuccess={handleLogin} />
+            )
+          }
+        />
+        <Route
+          element={
+            isAuthenticated ? (
+              <AppShell onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        >
           <Route
             index
             element={
@@ -41,7 +74,6 @@ function App() {
           <Route path="settings" element={<ProfileSettings mode="settings" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
-        <Route path="/auth" element={<AuthPage />} />
       </Routes>
     </BrowserRouter>
   )

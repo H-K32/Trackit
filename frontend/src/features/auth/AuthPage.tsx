@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, LockKeyhole, Mail, Target, UserRound } from 'lucide-react'
 import { login, register } from '../../api/auth.ts'
 
@@ -8,7 +9,12 @@ type FieldErrors = Record<string, string[]>
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-export function AuthPage() {
+interface AuthPageProps {
+  onAuthSuccess?: (user?: unknown) => void
+}
+
+export function AuthPage({ onAuthSuccess }: AuthPageProps = {}) {
+  const navigate = useNavigate()
   const [mode, setMode] = useState<AuthMode>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -60,6 +66,16 @@ export function AuthPage() {
         result = await login({ email: email.trim(), password })
       }
       setSuccessMessage(result.message)
+      localStorage.setItem('trackit_auth', 'true')
+      if (result.user) {
+        localStorage.setItem('trackit_user', JSON.stringify(result.user))
+      }
+      if (onAuthSuccess) {
+        onAuthSuccess(result.user)
+      }
+      setTimeout(() => {
+        navigate('/')
+      }, 400)
     } catch (error: unknown) {
       const laravelError = error as { message?: string; errors?: FieldErrors }
       setServerMessage(laravelError.message || 'Something went wrong. Please try again.')

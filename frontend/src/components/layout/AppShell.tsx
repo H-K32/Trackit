@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { BarChart3, LayoutDashboard, Settings, Target } from 'lucide-react'
+import { BarChart3, LayoutDashboard, LogOut, Settings, Target } from 'lucide-react'
 
-export function AppShell() {
+export function AppShell({ onLogout }: { onLogout?: () => void } = {}) {
   const navigate = useNavigate()
   const nav = [
     { to:'/', label:'Dashboard', icon:LayoutDashboard },
@@ -16,6 +16,16 @@ export function AppShell() {
       <div className="sidebar-bottom">
         <NavLink to="/settings" className="nav-item"><Settings size={18}/><span>Settings</span></NavLink>
         <NavLink to="/profile" className="profile"><span className="avatar">AK</span><span><strong>Alex Kim</strong><small>Personal workspace</small></span></NavLink>
+        {onLogout && (
+          <button
+            type="button"
+            className="nav-item"
+            onClick={onLogout}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit' }}
+          >
+            <LogOut size={18}/><span>Log out</span>
+          </button>
+        )}
       </div>
     </aside>
     <main className="main"><Outlet/></main>

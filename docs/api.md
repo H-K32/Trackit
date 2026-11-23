@@ -41,8 +41,7 @@ This document describes all API endpoints for the Trackit backend, including aut
   |---|---|---|---|
   | `name` | string | `required`, `string`, `max:255` | User's full name |
   | `email` | string | `required`, `email`, `unique:users,email` | Unique email address |
-  | `password` | string | `required`, `string`, `min:8`, `confirmed` | Account password |
-  | `password_confirmation` | string | `required` (with `confirmed`) | Password confirmation |
+  | `password` | string | `required`, `string`, `min:8` | Account password (minimum 8 characters; no confirmation required) |
   | `timezone` | string | `required`, `string`, `timezone:all` | Valid IANA timezone identifier (e.g. `America/New_York`) |
 - **Success Status**: `201 Created`
 - **Example Response**:
@@ -60,7 +59,7 @@ This document describes all API endpoints for the Trackit backend, including aut
 }
 ```
 - **Error Codes**:
-  - `422 Unprocessable Content`: Missing fields, duplicate email, invalid timezone, password < 8 characters, or confirmation mismatch.
+  - `422 Unprocessable Content`: Missing fields, duplicate email, invalid timezone, or password < 8 characters.
 
 ---
 
