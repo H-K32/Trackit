@@ -354,7 +354,7 @@ export function DailyLogsSection({
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <CalendarDays size={18} style={{ color: '#60A5FA', flexShrink: 0 }} />
+            <CalendarDays size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
             <strong style={{ fontSize: '15px', color: 'var(--text)' }}>
               {formatYmd(selectedDate, {
                 weekday: 'short',
@@ -366,9 +366,9 @@ export function DailyLogsSection({
             {isToday && (
               <span
                 style={{
-                  background: 'rgba(96, 165, 250, 0.15)',
-                  color: '#93C5FD',
-                  border: '1px solid rgba(96, 165, 250, 0.3)',
+                  background: 'color-mix(in srgb, var(--accent) 15%, transparent)',
+                  color: 'var(--accent)',
+                  border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
                   padding: '2px 8px',
                   borderRadius: '10px',
                   fontSize: '11px',
@@ -431,9 +431,9 @@ export function DailyLogsSection({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'rgba(245, 158, 11, 0.08)',
-            border: '1px solid rgba(245, 158, 11, 0.25)',
-            color: '#FCD34D',
+            background: 'color-mix(in srgb, var(--status-pending) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--status-pending) 25%, transparent)',
+            color: 'var(--status-pending)',
             padding: '10px 14px',
             borderRadius: '10px',
             margin: '16px 0',
@@ -453,8 +453,8 @@ export function DailyLogsSection({
               style={{
                 width: '28px',
                 height: '28px',
-                border: '3px solid rgba(100, 139, 255, 0.2)',
-                borderTopColor: '#60A5FA',
+                border: '3px solid var(--border)',
+                borderTopColor: 'var(--accent)',
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
                 margin: '0 auto 10px',
@@ -466,7 +466,7 @@ export function DailyLogsSection({
           </div>
         ) : fetchError ? (
           <div style={{ textAlign: 'center', padding: '24px 20px' }}>
-            <p style={{ color: '#F87171', marginBottom: '12px', fontSize: '14px' }}>
+            <p style={{ color: 'var(--status-missed)', marginBottom: '12px', fontSize: '14px' }}>
               {fetchError}
             </p>
             <button className="button secondary" onClick={() => loadOverview(selectedDate)}>
@@ -475,7 +475,7 @@ export function DailyLogsSection({
           </div>
         ) : overview.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '36px 20px' }}>
-            <AlertTriangle size={24} style={{ color: '#F59E0B', margin: '0 auto 8px' }} />
+            <AlertTriangle size={24} style={{ color: 'var(--status-pending)', margin: '0 auto 8px' }} />
             <p className="muted" style={{ margin: '0 0 14px', fontSize: '14px' }}>
               This track has no activities configured to log.
             </p>
@@ -545,7 +545,7 @@ export function DailyLogsSection({
                       }}
                     >
                       <span>Target:</span>
-                      <strong style={{ color: '#DDE7FF' }}>
+                      <strong style={{ color: 'var(--text)' }}>
                         {entry.tracking_type === 'checkbox'
                           ? entry.is_completed
                             ? '1 / 1 done'
@@ -586,7 +586,7 @@ export function DailyLogsSection({
                               cursor: loggableCheck.loggable ? 'pointer' : 'not-allowed',
                             }}
                           />
-                          <span style={{ fontSize: '13px', color: isChecked ? '#4ADE80' : 'var(--muted)' }}>
+                          <span style={{ fontSize: '13px', color: isChecked ? 'var(--status-completed)' : 'var(--muted)' }}>
                             {isChecked ? 'Completed' : 'Mark done'}
                           </span>
                         </label>
@@ -607,7 +607,7 @@ export function DailyLogsSection({
                               borderRadius: '8px',
                               textAlign: 'center',
                               fontSize: '14px',
-                              background: 'rgba(11, 16, 32, 0.72)',
+                              background: 'var(--surface)',
                               border: '1px solid var(--border)',
                               color: 'var(--text)',
                             }}
@@ -621,13 +621,13 @@ export function DailyLogsSection({
                       {/* Row Save Status Indicator */}
                       <div style={{ width: '70px', textAlign: 'right' }}>
                         {row.status === 'saving' && (
-                          <span style={{ fontSize: '11px', color: '#60A5FA' }}>Saving...</span>
+                          <span style={{ fontSize: '11px', color: 'var(--accent)' }}>Saving...</span>
                         )}
                         {row.status === 'saved' && (
                           <span
                             style={{
                               fontSize: '11px',
-                              color: '#4ADE80',
+                              color: 'var(--status-completed)',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '2px',
@@ -649,7 +649,7 @@ export function DailyLogsSection({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         fontSize: '12px',
-                        color: '#F87171',
+                        color: 'var(--status-missed)',
                       }}
                     >
                       <span>{row.errorMessage}</span>
@@ -659,7 +659,7 @@ export function DailyLogsSection({
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#60A5FA',
+                          color: 'var(--accent)',
                           textDecoration: 'underline',
                           cursor: 'pointer',
                           fontSize: '12px',

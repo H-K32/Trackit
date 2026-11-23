@@ -4,7 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B1020" />
     <title>TrackIt</title>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('trackit_theme');
+          var valid = ['midnight-cobalt', 'obsidian', 'forest-night', 'sunset-plum', 'clean-light'];
+          var theme = valid.indexOf(saved) !== -1 ? saved : 'midnight-cobalt';
+          document.documentElement.setAttribute('data-theme', theme);
+          var metaColors = {
+            'midnight-cobalt': { color: '#0B1020', scheme: 'dark' },
+            'obsidian': { color: '#000000', scheme: 'dark' },
+            'forest-night': { color: '#07130F', scheme: 'dark' },
+            'sunset-plum': { color: '#140B1F', scheme: 'dark' },
+            'clean-light': { color: '#F6F8FC', scheme: 'light' }
+          };
+          var info = metaColors[theme] || metaColors['midnight-cobalt'];
+          document.documentElement.style.colorScheme = info.scheme;
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) {
+            meta.content = info.color;
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

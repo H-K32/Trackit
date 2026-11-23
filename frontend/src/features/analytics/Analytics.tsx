@@ -149,8 +149,8 @@ export function Analytics() {
             style={{
               width: '32px',
               height: '32px',
-              border: '3px solid rgba(100, 139, 255, 0.2)',
-              borderTopColor: '#648BFF',
+              border: '3px solid var(--border)',
+              borderTopColor: 'var(--accent)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
               margin: '0 auto 12px',
@@ -175,7 +175,7 @@ export function Analytics() {
           </div>
         </header>
         <div className="panel" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <p style={{ color: '#F87171', marginBottom: '16px' }}>{tracksError}</p>
+          <p style={{ color: 'var(--status-missed)', marginBottom: '16px' }}>{tracksError}</p>
           <button type="button" className="button secondary" onClick={loadTracks}>
             <RotateCcw size={16} /> Retry
           </button>
@@ -200,11 +200,11 @@ export function Analytics() {
               display: 'inline-flex',
               padding: '16px',
               borderRadius: '50%',
-              background: 'rgba(100, 139, 255, 0.12)',
+              background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
               marginBottom: '16px',
             }}
           >
-            <BarChart3 size={32} color="#648BFF" />
+            <BarChart3 size={32} color="var(--accent)" />
           </div>
           <h2 style={{ marginBottom: '8px', fontSize: '20px' }}>No tracks found</h2>
           <p className="muted" style={{ maxWidth: '420px', margin: '0 auto 24px', fontSize: '14px' }}>

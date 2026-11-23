@@ -156,19 +156,47 @@ export function checkDateLoggable(
 export function formatDayStatus(status: string): { label: string; color: string; bg: string } {
   switch (status) {
     case 'completed':
-      return { label: 'Completed', color: '#4ADE80', bg: 'rgba(74, 222, 128, 0.12)' }
+      return {
+        label: 'Completed',
+        color: 'var(--status-completed)',
+        bg: 'color-mix(in srgb, var(--status-completed) 15%, transparent)',
+      }
     case 'partial':
-      return { label: 'Partial', color: '#60A5FA', bg: 'rgba(96, 165, 250, 0.12)' }
+      return {
+        label: 'Partial',
+        color: 'var(--status-partial)',
+        bg: 'color-mix(in srgb, var(--status-partial) 15%, transparent)',
+      }
     case 'missed':
-      return { label: 'Missed', color: '#F87171', bg: 'rgba(248, 113, 113, 0.12)' }
+      return {
+        label: 'Missed',
+        color: 'var(--status-missed)',
+        bg: 'color-mix(in srgb, var(--status-missed) 15%, transparent)',
+      }
     case 'pending':
-      return { label: 'Pending', color: '#FCD34D', bg: 'rgba(252, 211, 77, 0.12)' }
+      return {
+        label: 'Pending',
+        color: 'var(--status-pending)',
+        bg: 'color-mix(in srgb, var(--status-pending) 15%, transparent)',
+      }
     case 'upcoming':
-      return { label: 'Upcoming', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' }
+      return {
+        label: 'Upcoming',
+        color: 'var(--status-upcoming)',
+        bg: 'color-mix(in srgb, var(--status-upcoming) 15%, transparent)',
+      }
     case 'no_activities':
-      return { label: 'No activities', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' }
+      return {
+        label: 'No activities',
+        color: 'var(--status-upcoming)',
+        bg: 'color-mix(in srgb, var(--status-upcoming) 15%, transparent)',
+      }
     default:
-      return { label: status || 'Unknown', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' }
+      return {
+        label: status || 'Unknown',
+        color: 'var(--status-upcoming)',
+        bg: 'color-mix(in srgb, var(--status-upcoming) 15%, transparent)',
+      }
   }
 }
 
@@ -229,4 +257,42 @@ export function formatMonthYear(year: number, month: number): string {
     year: 'numeric',
   })
 }
+
+/**
+ * Pure calculation of day-of-week for a YYYY-MM-DD string without calling Date().
+ * Returns 0 = Sunday, 1 = Monday, ..., 6 = Saturday (matching Date.prototype.getDay).
+ */
+export function getDayOfWeekFromYmd(ymd: string): number {
+  const parsed = parseYmd(ymd)
+  if (!parsed) return 0
+  const { year, month, day } = parsed
+  const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
+  const y = month < 3 ? year - 1 : year
+  return (y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + t[month - 1] + day) % 7
+}
+
+/**
+ * Return a time-of-day greeting (Good morning, Good afternoon, Good evening)
+ * based on the user's timezone.
+ */
+export function getGreeting(timezone?: string): string {
+  try {
+    const tz = timezone || 'UTC'
+    const hourStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: 'numeric',
+      hour12: false,
+    }).format(new Date())
+    const hour = parseInt(hourStr, 10)
+    if (hour >= 5 && hour < 12) return 'Good morning'
+    if (hour >= 12 && hour < 18) return 'Good afternoon'
+    return 'Good evening'
+  } catch {
+    const localHour = new Date().getHours()
+    if (localHour >= 5 && localHour < 12) return 'Good morning'
+    if (localHour >= 12 && localHour < 18) return 'Good afternoon'
+    return 'Good evening'
+  }
+}
+
 

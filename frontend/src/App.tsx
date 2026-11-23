@@ -7,6 +7,7 @@ import { Analytics } from './features/analytics/Analytics'
 import { ProfileSettings } from './features/settings/ProfileSettings'
 import { AuthPage } from './features/auth/AuthPage'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { ServerWakeNotice } from './components/common/ServerWakeNotice'
 import './theme.css'
 
@@ -20,8 +21,8 @@ function AppContent() {
           display: 'grid',
           minHeight: '100vh',
           placeItems: 'center',
-          background: 'var(--color-bg, #0B0F17)',
-          color: 'var(--color-text, #F8FAFC)',
+          background: 'var(--midnight)',
+          color: 'var(--text)',
         }}
       >
         <div style={{ textAlign: 'center' }}>
@@ -29,14 +30,14 @@ function AppContent() {
             style={{
               width: '36px',
               height: '36px',
-              border: '3px solid rgba(100, 139, 255, 0.2)',
-              borderTopColor: '#648BFF',
+              border: '3px solid var(--border)',
+              borderTopColor: 'var(--accent)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
               margin: '0 auto 16px',
             }}
           />
-          <p style={{ color: 'var(--color-text-muted, #94A3B8)', fontSize: '14px', margin: 0 }}>
+          <p style={{ color: 'var(--muted)', fontSize: '14px', margin: 0 }}>
             Restoring session...
           </p>
           <style>{`
@@ -88,9 +89,11 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   )
 }

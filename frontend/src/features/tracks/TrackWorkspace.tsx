@@ -134,7 +134,7 @@ function EditTrackModal({ track, onClose, onSuccess, userTimezone }: EditTrackMo
             />
           </label>
           {fieldErrors.name && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.name[0]}
             </small>
           )}
@@ -148,7 +148,7 @@ function EditTrackModal({ track, onClose, onSuccess, userTimezone }: EditTrackMo
             />
           </label>
           {fieldErrors.description && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.description[0]}
             </small>
           )}
@@ -183,19 +183,19 @@ function EditTrackModal({ track, onClose, onSuccess, userTimezone }: EditTrackMo
           {!isUpcoming && (
             <small
               className="helper-text"
-              style={{ color: '#E0A050', display: 'block', margin: '-4px 0 12px', fontSize: '12px' }}
+              style={{ color: 'var(--status-pending)', display: 'block', margin: '-4px 0 12px', fontSize: '12px' }}
             >
               The track schedule cannot be changed after it has started.
             </small>
           )}
 
           {fieldErrors.start_date && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.start_date[0]}
             </small>
           )}
           {fieldErrors.duration_days && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.duration_days[0]}
             </small>
           )}
@@ -249,8 +249,8 @@ function DeleteTrackModal({ trackName, onClose, onConfirm }: DeleteTrackModalPro
       <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
         <div className="modal-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <AlertTriangle size={20} color="#F87171" />
-            <h2 style={{ color: '#F87171', margin: 0 }}>Delete Track</h2>
+            <AlertTriangle size={20} color="var(--status-missed)" />
+            <h2 style={{ color: 'var(--status-missed)', margin: 0 }}>Delete Track</h2>
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close modal">
             ×
@@ -281,8 +281,8 @@ function DeleteTrackModal({ trackName, onClose, onConfirm }: DeleteTrackModalPro
               onClick={handleDelete}
               disabled={submitting}
               style={{
-                background: '#DC2626',
-                color: '#FFFFFF',
+                background: 'var(--status-missed)',
+                color: 'white',
                 border: 'none',
               }}
             >
@@ -504,8 +504,8 @@ export function TrackWorkspace() {
             style={{
               width: '32px',
               height: '32px',
-              border: '3px solid rgba(100, 139, 255, 0.2)',
-              borderTopColor: '#648BFF',
+              border: '3px solid var(--border)',
+              borderTopColor: 'var(--accent)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
               margin: '0 auto 12px',
@@ -526,7 +526,7 @@ export function TrackWorkspace() {
           <ArrowLeft size={16} /> Dashboard
         </button>
         <div className="panel" style={{ textAlign: 'center', padding: '40px 20px', marginTop: '20px' }}>
-          <p style={{ color: '#F87171', marginBottom: '16px' }}>{generalError || 'Unable to load track.'}</p>
+          <p style={{ color: 'var(--status-missed)', marginBottom: '16px' }}>{generalError || 'Unable to load track.'}</p>
           <button className="button secondary" onClick={reloadAll}>
             <RotateCcw size={16} /> Retry
           </button>
@@ -545,10 +545,10 @@ export function TrackWorkspace() {
 
   const statusColor =
     track.status === 'active'
-      ? '#4ADE80'
+      ? 'var(--status-completed)'
       : track.status === 'upcoming'
-      ? '#60A5FA'
-      : '#94A3B8'
+      ? 'var(--status-partial)'
+      : 'var(--status-upcoming)'
 
   const userTz = user?.timezone
 
@@ -618,7 +618,7 @@ export function TrackWorkspace() {
             type="button"
             className="button secondary"
             onClick={() => setDeleteTrackOpen(true)}
-            style={{ color: '#F87171', borderColor: 'rgba(248, 113, 113, 0.3)' }}
+            style={{ color: 'var(--status-missed)', borderColor: 'color-mix(in srgb, var(--status-missed) 30%, transparent)' }}
           >
             <Trash2 size={16} />
             Delete
@@ -685,19 +685,19 @@ export function TrackWorkspace() {
                 style={{
                   padding: '12px 14px',
                   borderRadius: '10px',
-                  background: m.reached ? 'rgba(74, 222, 128, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                  border: `1px solid ${m.reached ? 'rgba(74, 222, 128, 0.25)' : 'var(--border)'}`,
+                  background: m.reached ? 'color-mix(in srgb, var(--status-completed) 10%, transparent)' : 'rgba(255, 255, 255, 0.02)',
+                  border: `1px solid ${m.reached ? 'color-mix(in srgb, var(--status-completed) 25%, transparent)' : 'var(--border)'}`,
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '4px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <strong style={{ color: m.reached ? '#4ADE80' : 'var(--text)', fontSize: '15px' }}>
+                  <strong style={{ color: m.reached ? 'var(--status-completed)' : 'var(--text)', fontSize: '15px' }}>
                     {m.threshold}%
                   </strong>
                   {m.reached ? (
-                    <Check size={16} color="#4ADE80" />
+                    <Check size={16} color="var(--status-completed)" />
                   ) : (
                     <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Pending</span>
                   )}
@@ -791,14 +791,14 @@ export function TrackWorkspace() {
                 <span
                   style={{
                     fontSize: '12px',
-                    color: '#E0A050',
+                    color: 'var(--status-pending)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
-                    background: 'rgba(245, 158, 11, 0.1)',
+                    background: 'color-mix(in srgb, var(--status-pending) 10%, transparent)',
                     padding: '6px 12px',
                     borderRadius: '8px',
-                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    border: '1px solid color-mix(in srgb, var(--status-pending) 25%, transparent)',
                   }}
                 >
                   <Lock size={14} /> Activities locked once track starts
@@ -821,8 +821,8 @@ export function TrackWorkspace() {
                   style={{
                     padding: '32px 24px',
                     textAlign: 'center',
-                    border: '1px solid rgba(245, 158, 11, 0.4)',
-                    background: 'rgba(245, 158, 11, 0.08)',
+                    border: '1px solid color-mix(in srgb, var(--status-pending) 35%, transparent)',
+                    background: 'color-mix(in srgb, var(--status-pending) 8%, transparent)',
                     borderRadius: '16px',
                   }}
                 >
@@ -830,15 +830,15 @@ export function TrackWorkspace() {
                     style={{
                       display: 'inline-flex',
                       padding: '12px',
-                      background: 'rgba(245, 158, 11, 0.15)',
+                      background: 'color-mix(in srgb, var(--status-pending) 15%, transparent)',
                       borderRadius: '50%',
                       marginBottom: '12px',
                     }}
                   >
-                    <AlertTriangle size={24} color="#F59E0B" />
+                    <AlertTriangle size={24} color="var(--status-pending)" />
                   </div>
-                  <h3 style={{ margin: '0 0 8px', color: '#FCD34D' }}>No activities configured yet</h3>
-                  <p style={{ margin: '0 0 20px', color: '#FDE68A', fontSize: '14px' }}>
+                  <h3 style={{ margin: '0 0 8px', color: 'var(--status-pending)' }}>No activities configured yet</h3>
+                  <p style={{ margin: '0 0 20px', color: 'var(--status-pending)', fontSize: '14px' }}>
                     Add at least one activity before the track starts, because they can&apos;t be added later.
                   </p>
                   <button
@@ -854,7 +854,7 @@ export function TrackWorkspace() {
                   <p className="muted" style={{ margin: '0 0 8px' }}>
                     No activities were added to this track.
                   </p>
-                  <small style={{ color: '#E0A050' }}>Activities are locked once a track starts.</small>
+                  <small style={{ color: 'var(--status-pending)' }}>Activities are locked once a track starts.</small>
                 </div>
               )
             ) : (
@@ -915,7 +915,7 @@ export function TrackWorkspace() {
                       }}
                     >
                       <span style={{ fontSize: '13px', color: 'var(--muted)' }}>Daily target</span>
-                      <strong style={{ fontSize: '13px', color: '#DDE7FF' }}>
+                      <strong style={{ fontSize: '13px', color: 'var(--text)' }}>
                         {formatActivityTarget(activity)}
                       </strong>
                     </div>
@@ -953,7 +953,7 @@ export function TrackWorkspace() {
                             type="button"
                             className="icon-button"
                             title="Delete activity"
-                            style={{ color: '#F87171' }}
+                            style={{ color: 'var(--status-missed)' }}
                             onClick={() => setDeletingActivity(activity)}
                           >
                             <Trash2 size={14} />
@@ -1010,14 +1010,14 @@ export function TrackWorkspace() {
               <span
                 style={{
                   fontSize: '12px',
-                  color: '#E0A050',
+                  color: 'var(--status-pending)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: 'rgba(245, 158, 11, 0.1)',
+                  background: 'color-mix(in srgb, var(--status-pending) 10%, transparent)',
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  border: '1px solid color-mix(in srgb, var(--status-pending) 25%, transparent)',
                 }}
               >
                 <Lock size={14} /> Activities locked once track starts
@@ -1040,8 +1040,8 @@ export function TrackWorkspace() {
                 style={{
                   padding: '32px 24px',
                   textAlign: 'center',
-                  border: '1px solid rgba(245, 158, 11, 0.4)',
-                  background: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid color-mix(in srgb, var(--status-pending) 35%, transparent)',
+                  background: 'color-mix(in srgb, var(--status-pending) 8%, transparent)',
                   borderRadius: '16px',
                 }}
               >
@@ -1049,15 +1049,15 @@ export function TrackWorkspace() {
                   style={{
                     display: 'inline-flex',
                     padding: '12px',
-                    background: 'rgba(245, 158, 11, 0.15)',
+                    background: 'color-mix(in srgb, var(--status-pending) 15%, transparent)',
                     borderRadius: '50%',
                     marginBottom: '12px',
                   }}
                 >
-                  <AlertTriangle size={24} color="#F59E0B" />
+                  <AlertTriangle size={24} color="var(--status-pending)" />
                 </div>
-                <h3 style={{ margin: '0 0 8px', color: '#FCD34D' }}>No activities configured yet</h3>
-                <p style={{ margin: '0 0 20px', color: '#FDE68A', fontSize: '14px' }}>
+                <h3 style={{ margin: '0 0 8px', color: 'var(--status-pending)' }}>No activities configured yet</h3>
+                <p style={{ margin: '0 0 20px', color: 'var(--status-pending)', fontSize: '14px' }}>
                   Add at least one activity before the track starts, because they can&apos;t be added later.
                 </p>
                 <button
@@ -1073,7 +1073,7 @@ export function TrackWorkspace() {
                 <p className="muted" style={{ margin: '0 0 8px' }}>
                   No activities were added to this track.
                 </p>
-                <small style={{ color: '#E0A050' }}>Activities are locked once a track starts.</small>
+                <small style={{ color: 'var(--status-pending)' }}>Activities are locked once a track starts.</small>
               </div>
             )
           ) : (
@@ -1134,7 +1134,7 @@ export function TrackWorkspace() {
                     }}
                   >
                     <span style={{ fontSize: '13px', color: 'var(--muted)' }}>Daily target</span>
-                    <strong style={{ fontSize: '13px', color: '#DDE7FF' }}>
+                    <strong style={{ fontSize: '13px', color: 'var(--text)' }}>
                       {formatActivityTarget(activity)}
                     </strong>
                   </div>
@@ -1172,7 +1172,7 @@ export function TrackWorkspace() {
                           type="button"
                           className="icon-button"
                           title="Delete activity"
-                          style={{ color: '#F87171' }}
+                          style={{ color: 'var(--status-missed)' }}
                           onClick={() => setDeletingActivity(activity)}
                         >
                           <Trash2 size={14} />

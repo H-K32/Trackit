@@ -77,8 +77,8 @@ export function TrackCalendar({
           style={{
             width: '32px',
             height: '32px',
-            border: '3px solid rgba(100, 139, 255, 0.2)',
-            borderTopColor: '#648BFF',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--accent)',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
             margin: '0 auto 12px',
@@ -94,7 +94,7 @@ export function TrackCalendar({
   if (error) {
     return (
       <section className="panel" style={{ padding: '36px 20px', textAlign: 'center', marginTop: '24px' }}>
-        <p style={{ color: '#F87171', marginBottom: '14px', fontSize: '14px' }}>{error}</p>
+        <p style={{ color: 'var(--status-missed)', marginBottom: '14px', fontSize: '14px' }}>{error}</p>
         {onRetry && (
           <button type="button" className="button secondary" onClick={onRetry}>
             <RotateCcw size={15} /> Retry
@@ -131,18 +131,18 @@ export function TrackCalendar({
   const renderStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Check size={13} color="#4ADE80" />
+        return <Check size={13} color="var(--status-completed)" />
       case 'partial':
-        return <CircleDot size={13} color="#60A5FA" />
+        return <CircleDot size={13} color="var(--status-partial)" />
       case 'missed':
-        return <X size={13} color="#F87171" />
+        return <X size={13} color="var(--status-missed)" />
       case 'pending':
-        return <Clock3 size={13} color="#FCD34D" />
+        return <Clock3 size={13} color="var(--status-pending)" />
       case 'no_activities':
-        return <Minus size={13} color="#94A3B8" />
+        return <Minus size={13} color="var(--status-upcoming)" />
       case 'upcoming':
       default:
-        return <Lock size={13} color="#94A3B8" />
+        return <Lock size={13} color="var(--status-upcoming)" />
     }
   }
 
@@ -180,16 +180,16 @@ export function TrackCalendar({
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CalendarDays size={20} style={{ color: '#60A5FA' }} />
+            <CalendarDays size={20} style={{ color: 'var(--accent)' }} />
             <h2 style={{ margin: 0, fontSize: '18px' }}>Track Calendar</h2>
             <span
               style={{
                 fontSize: '11px',
-                background: 'rgba(96, 165, 250, 0.12)',
-                color: '#93C5FD',
+                background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                color: 'var(--accent)',
                 padding: '2px 8px',
                 borderRadius: '8px',
-                border: '1px solid rgba(96, 165, 250, 0.25)',
+                border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)',
               }}
             >
               {track.duration_days} days total
@@ -338,10 +338,10 @@ export function TrackCalendar({
                 style={{
                   background: statusInfo.bg,
                   border: isSelected
-                    ? '2px solid #648BFF'
+                    ? '2px solid var(--accent)'
                     : isToday
-                    ? '2px solid rgba(96, 165, 250, 0.8)'
-                    : `1px solid ${statusInfo.color}33`,
+                    ? '2px solid var(--accent)'
+                    : `1px solid color-mix(in srgb, ${statusInfo.color} 30%, transparent)`,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
@@ -349,9 +349,9 @@ export function TrackCalendar({
                   position: 'relative',
                   transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                   boxShadow: isSelected
-                    ? '0 0 14px rgba(100, 139, 255, 0.35)'
+                    ? '0 0 14px color-mix(in srgb, var(--accent) 35%, transparent)'
                     : isToday
-                    ? '0 0 10px rgba(96, 165, 250, 0.2)'
+                    ? '0 0 10px color-mix(in srgb, var(--accent) 20%, transparent)'
                     : 'none',
                 }}
               >
@@ -361,7 +361,7 @@ export function TrackCalendar({
                     style={{
                       fontSize: '13px',
                       fontWeight: isToday ? 700 : 500,
-                      color: isToday ? '#93C5FD' : 'var(--text)',
+                      color: isToday ? 'var(--accent)' : 'var(--text)',
                     }}
                   >
                     {dayNumber}
@@ -372,8 +372,8 @@ export function TrackCalendar({
                       style={{
                         fontSize: '9px',
                         fontWeight: 700,
-                        background: '#3B82F6',
-                        color: '#FFFFFF',
+                        background: 'var(--accent)',
+                        color: 'var(--accent-text)',
                         padding: '1px 5px',
                         borderRadius: '6px',
                         textTransform: 'uppercase',
@@ -413,7 +413,7 @@ export function TrackCalendar({
                     style={{
                       fontSize: '11px',
                       fontWeight: 600,
-                      color: completionPct > 0 ? '#DDE7FF' : 'var(--muted)',
+                      color: completionPct > 0 ? 'var(--text)' : 'var(--muted)',
                     }}
                   >
                     {Math.round(completionPct)}%
@@ -433,7 +433,7 @@ export function TrackCalendar({
                       bottom: 'calc(100% + 8px)',
                       left: '50%',
                       transform: 'translateX(-50%)',
-                      background: 'rgba(15, 23, 42, 0.95)',
+                      background: 'var(--card)',
                       border: '1px solid var(--border)',
                       backdropFilter: 'blur(8px)',
                       padding: '8px 12px',
@@ -444,7 +444,7 @@ export function TrackCalendar({
                       pointerEvents: 'none',
                     }}
                   >
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#F1F5FC' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>
                       {formatYmd(dateStr)}
                     </div>
                     <div
@@ -511,16 +511,16 @@ export function TrackCalendar({
                 width: '20px',
                 height: '20px',
                 borderRadius: '6px',
-                background: 'rgba(74, 222, 128, 0.12)',
+                background: 'color-mix(in srgb, var(--status-completed) 15%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Check size={13} color="#4ADE80" />
+              <Check size={13} color="var(--status-completed)" />
             </span>
             <span>
-              <strong style={{ color: '#4ADE80' }}>Completed:</strong> 100% target met
+              <strong style={{ color: 'var(--status-completed)' }}>Completed:</strong> 100% target met
             </span>
           </div>
 
@@ -530,16 +530,16 @@ export function TrackCalendar({
                 width: '20px',
                 height: '20px',
                 borderRadius: '6px',
-                background: 'rgba(96, 165, 250, 0.12)',
+                background: 'color-mix(in srgb, var(--status-partial) 15%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <CircleDot size={13} color="#60A5FA" />
+              <CircleDot size={13} color="var(--status-partial)" />
             </span>
             <span>
-              <strong style={{ color: '#60A5FA' }}>Partial:</strong> Some progress logged
+              <strong style={{ color: 'var(--status-partial)' }}>Partial:</strong> Some progress logged
             </span>
           </div>
 
@@ -549,16 +549,16 @@ export function TrackCalendar({
                 width: '20px',
                 height: '20px',
                 borderRadius: '6px',
-                background: 'rgba(248, 113, 113, 0.12)',
+                background: 'color-mix(in srgb, var(--status-missed) 15%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <X size={13} color="#F87171" />
+              <X size={13} color="var(--status-missed)" />
             </span>
             <span>
-              <strong style={{ color: '#F87171' }}>Missed:</strong> 0% logged on past day
+              <strong style={{ color: 'var(--status-missed)' }}>Missed:</strong> 0% logged on past day
             </span>
           </div>
 
@@ -568,16 +568,16 @@ export function TrackCalendar({
                 width: '20px',
                 height: '20px',
                 borderRadius: '6px',
-                background: 'rgba(252, 211, 77, 0.12)',
+                background: 'color-mix(in srgb, var(--status-pending) 15%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Clock3 size={13} color="#FCD34D" />
+              <Clock3 size={13} color="var(--status-pending)" />
             </span>
             <span>
-              <strong style={{ color: '#FCD34D' }}>Pending:</strong> Awaiting today&apos;s logs
+              <strong style={{ color: 'var(--status-pending)' }}>Pending:</strong> Awaiting today&apos;s logs
             </span>
           </div>
 
@@ -587,16 +587,16 @@ export function TrackCalendar({
                 width: '20px',
                 height: '20px',
                 borderRadius: '6px',
-                background: 'rgba(148, 163, 184, 0.12)',
+                background: 'color-mix(in srgb, var(--status-upcoming) 15%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Lock size={13} color="#94A3B8" />
+              <Lock size={13} color="var(--status-upcoming)" />
             </span>
             <span>
-              <strong style={{ color: '#94A3B8' }}>Upcoming:</strong> Scheduled future day
+              <strong style={{ color: 'var(--status-upcoming)' }}>Upcoming:</strong> Scheduled future day
             </span>
           </div>
 
@@ -606,16 +606,16 @@ export function TrackCalendar({
                 width: '20px',
                 height: '20px',
                 borderRadius: '6px',
-                background: 'rgba(148, 163, 184, 0.12)',
+                background: 'color-mix(in srgb, var(--status-upcoming) 15%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Minus size={13} color="#94A3B8" />
+              <Minus size={13} color="var(--status-upcoming)" />
             </span>
             <span>
-              <strong style={{ color: '#94A3B8' }}>No activities:</strong> None configured
+              <strong style={{ color: 'var(--status-upcoming)' }}>No activities:</strong> None configured
             </span>
           </div>
         </div>

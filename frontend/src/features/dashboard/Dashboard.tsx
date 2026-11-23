@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { CalendarDays, ChevronRight, Clock3, Plus, RotateCcw, Target } from 'lucide-react'
 import { getTracks, createTrack } from '../../api/tracks.ts'
 import type { TrackItem } from '../../api/tracks.ts'
+import { getTrackCalendar } from '../../api/dailyLogs.ts'
+import type { CalendarDayItem } from '../../api/dailyLogs.ts'
 import { useAuth } from '../../context/AuthContext.tsx'
 import type { ApiError } from '../../api/client.ts'
 import {
@@ -11,6 +13,10 @@ import {
   calculateEndDate,
   getTomorrowInTimezone,
   formatTrackStatus,
+  getGreeting,
+  getTodayInTimezone,
+  getDayOfWeekFromYmd,
+  addDaysToYmd,
 } from '../../utils/date.ts'
 
 interface CreateTrackModalProps {
@@ -103,7 +109,7 @@ export function CreateTrackModal({ onClose, onSuccess, userTimezone }: CreateTra
             />
           </label>
           {fieldErrors.name && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.name[0]}
             </small>
           )}
@@ -118,7 +124,7 @@ export function CreateTrackModal({ onClose, onSuccess, userTimezone }: CreateTra
             />
           </label>
           {fieldErrors.description && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.description[0]}
             </small>
           )}
@@ -147,12 +153,12 @@ export function CreateTrackModal({ onClose, onSuccess, userTimezone }: CreateTra
           </div>
 
           {fieldErrors.start_date && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.start_date[0]}
             </small>
           )}
           {fieldErrors.duration_days && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.duration_days[0]}
             </small>
           )}
@@ -188,9 +194,21 @@ export function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [tracks, setTracks] = useState<TrackItem[]>([])
+  const [calendarDays, setCalendarDays] = useState<CalendarDayItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+
+  const loadTrackCalendar = (trackList: TrackItem[]) => {
+    const active = trackList.find((t) => t.status === 'active') || (trackList.length > 0 ? trackList[0] : null)
+    if (active) {
+      getTrackCalendar(active.id)
+        .then((res) => setCalendarDays(res.days || []))
+        .catch(() => setCalendarDays([]))
+    } else {
+      setCalendarDays([])
+    }
+  }
 
   const fetchTracks = () => {
     setLoading(true)
@@ -198,6 +216,7 @@ export function Dashboard() {
     getTracks(true)
       .then((data) => {
         setTracks(data)
+        loadTrackCalendar(data)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -213,6 +232,7 @@ export function Dashboard() {
       .then((data) => {
         if (!ignore) {
           setTracks(data)
+          loadTrackCalendar(data)
           setLoading(false)
         }
       })
@@ -235,13 +255,36 @@ export function Dashboard() {
 
   const userDisplayName = user?.name || 'there'
   const activeCount = tracks.filter((t) => t.status === 'active').length
+  const activeTrack = tracks.find((t) => t.status === 'active') || (tracks.length > 0 ? tracks[0] : null)
+  const greeting = getGreeting(user?.timezone)
+  const today = getTodayInTimezone(user?.timezone)
+
+  // Calculate Monday through Sunday of the current week in user timezone
+  const dayOfWeek = getDayOfWeekFromYmd(today) // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const mondayYmd = addDaysToYmd(today, mondayOffset)
+
+  const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, index) => {
+    const dateStr = addDaysToYmd(mondayYmd, index)
+    const isToday = dateStr === today
+    const dayData = calendarDays.find((d) => d.date === dateStr)
+    const isDone = dayData ? dayData.day_status === 'completed' || dayData.completion_percentage >= 100 : false
+    return {
+      label,
+      dateStr,
+      isToday,
+      isDone,
+      dayStatus: dayData?.day_status,
+      pct: dayData ? Math.round(dayData.completion_percentage) : 0,
+    }
+  })
 
   return (
     <div className="page">
       <header className="page-header">
         <div>
           <p className="eyebrow">YOUR WORKSPACE</p>
-          <h1>Good morning, {userDisplayName}</h1>
+          <h1>{greeting}, {userDisplayName}</h1>
           <p className="muted">Turn ambitious goals into a clear daily practice.</p>
         </div>
         <button className="button primary" onClick={() => setModalOpen(true)}>
@@ -266,8 +309,8 @@ export function Dashboard() {
               style={{
                 width: '32px',
                 height: '32px',
-                border: '3px solid rgba(100, 139, 255, 0.2)',
-                borderTopColor: '#648BFF',
+                border: '3px solid var(--border)',
+                borderTopColor: 'var(--accent)',
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
                 margin: '0 auto 12px',
@@ -279,7 +322,7 @@ export function Dashboard() {
           </div>
         ) : error ? (
           <div className="panel" style={{ textAlign: 'center', padding: '36px 20px' }}>
-            <p style={{ color: '#F87171', marginBottom: '16px', fontSize: '14px' }}>{error}</p>
+            <p style={{ color: 'var(--status-missed)', marginBottom: '16px', fontSize: '14px' }}>{error}</p>
             <button className="button secondary" onClick={fetchTracks}>
               <RotateCcw size={16} /> Retry
             </button>
@@ -297,10 +340,10 @@ export function Dashboard() {
             {tracks.map((track) => {
               const statusColor =
                 track.status === 'active'
-                  ? '#4ADE80'
+                  ? 'var(--status-completed)'
                   : track.status === 'upcoming'
-                  ? '#60A5FA'
-                  : '#94A3B8'
+                  ? 'var(--status-partial)'
+                  : 'var(--status-upcoming)'
 
               const overallPct = track.progress ? Math.round(track.progress.overall_percentage) : 0
               const completedDays = track.progress ? track.progress.completed_days : 0
@@ -392,7 +435,7 @@ export function Dashboard() {
         )}
       </section>
 
-      {/* Placeholder sections for slices 3-5 */}
+      {/* Recent activity & Weekly status */}
       <section className="bottom-grid">
         <div className="panel">
           <div className="section-heading">
@@ -401,15 +444,49 @@ export function Dashboard() {
               <p>Your latest updates</p>
             </div>
           </div>
-          <p className="muted">No recent activity recorded yet.</p>
+          {activeTrack ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span className="muted">Active track:</span>
+                <strong style={{ color: 'var(--text)' }}>{activeTrack.name}</strong>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span className="muted">Overall progress:</span>
+                <strong style={{ color: 'var(--accent)' }}>
+                  {activeTrack.progress ? Math.round(activeTrack.progress.overall_percentage) : 0}%
+                </strong>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span className="muted">Today&apos;s status:</span>
+                <strong style={{ color: 'var(--text)' }}>
+                  {activeTrack.progress?.today ? activeTrack.progress.today.day_status : 'Awaiting log'}
+                </strong>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">No recent activity recorded yet.</p>
+          )}
         </div>
         <div className="panel summary-panel">
-          <h2>This week</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <h2 style={{ margin: 0 }}>This week</h2>
+            {activeTrack && (
+              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                {activeTrack.name}
+              </span>
+            )}
+          </div>
           <div className="week-days">
-            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-              <div key={i} className={i < 4 ? 'done' : ''}>
-                <span>{d}</span>
-                <i>{i < 4 ? '✓' : ''}</i>
+            {weekDays.map((d, i) => (
+              <div
+                key={i}
+                className={`${d.isDone ? 'done' : ''} ${d.isToday ? 'today' : ''}`}
+                title={`${formatYmd(d.dateStr, { weekday: 'short', month: 'short', day: 'numeric' })}: ${
+                  d.isDone ? 'Completed (100%)' : d.dayStatus ? `${d.dayStatus} (${d.pct}%)` : 'No logs'
+                }`}
+              >
+                <span>{d.label}</span>
+                <i>{d.isDone ? '✓' : d.isToday ? '•' : ''}</i>
               </div>
             ))}
           </div>

@@ -46,8 +46,8 @@ export function TrackAnalyticsView({
           style={{
             width: '32px',
             height: '32px',
-            border: '3px solid rgba(100, 139, 255, 0.2)',
-            borderTopColor: '#648BFF',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--accent)',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
             margin: '0 auto 12px',
@@ -63,7 +63,7 @@ export function TrackAnalyticsView({
   if (error) {
     return (
       <section className="panel" style={{ padding: '40px 20px', textAlign: 'center', marginTop: '24px' }}>
-        <p style={{ color: '#F87171', marginBottom: '14px', fontSize: '14px' }}>{error}</p>
+        <p style={{ color: 'var(--status-missed)', marginBottom: '14px', fontSize: '14px' }}>{error}</p>
         {onRetry && (
           <button type="button" className="button secondary" onClick={onRetry}>
             <RotateCcw size={15} /> Retry
@@ -82,8 +82,8 @@ export function TrackAnalyticsView({
           padding: '48px 24px',
           textAlign: 'center',
           marginTop: '24px',
-          background: 'rgba(96, 165, 250, 0.04)',
-          border: '1px solid rgba(96, 165, 250, 0.2)',
+          background: 'color-mix(in srgb, var(--accent) 5%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
           borderRadius: '16px',
         }}
       >
@@ -92,13 +92,13 @@ export function TrackAnalyticsView({
             display: 'inline-flex',
             padding: '14px',
             borderRadius: '50%',
-            background: 'rgba(96, 165, 250, 0.12)',
+            background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
             marginBottom: '16px',
           }}
         >
-          <Calendar size={28} color="#60A5FA" />
+          <Calendar size={28} color="var(--accent)" />
         </div>
-        <h3 style={{ margin: '0 0 8px', fontSize: '18px', color: '#93C5FD' }}>
+        <h3 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--accent)' }}>
           Track has not started yet
         </h3>
         <p style={{ margin: '0 auto', maxWidth: '440px', color: 'var(--muted)', fontSize: '14px' }}>
@@ -133,11 +133,11 @@ export function TrackAnalyticsView({
             display: 'inline-flex',
             padding: '14px',
             borderRadius: '50%',
-            background: 'rgba(100, 139, 255, 0.12)',
+            background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
             marginBottom: '16px',
           }}
         >
-          <BarChart3 size={28} color="#648BFF" />
+          <BarChart3 size={28} color="var(--accent)" />
         </div>
         <h3 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--text)' }}>
           Log your first day to see analytics
@@ -162,8 +162,8 @@ export function TrackAnalyticsView({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              color: '#4ADE80',
-              background: 'rgba(74, 222, 128, 0.12)',
+              color: 'var(--status-completed)',
+              background: 'color-mix(in srgb, var(--status-completed) 12%, transparent)',
               padding: '4px 10px',
               borderRadius: '8px',
               fontSize: '12px',
@@ -180,8 +180,8 @@ export function TrackAnalyticsView({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              color: '#F87171',
-              background: 'rgba(248, 113, 113, 0.12)',
+              color: 'var(--status-missed)',
+              background: 'color-mix(in srgb, var(--status-missed) 12%, transparent)',
               padding: '4px 10px',
               borderRadius: '8px',
               fontSize: '12px',
@@ -198,8 +198,8 @@ export function TrackAnalyticsView({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              color: '#60A5FA',
-              background: 'rgba(96, 165, 250, 0.12)',
+              color: 'var(--status-partial)',
+              background: 'color-mix(in srgb, var(--status-partial) 12%, transparent)',
               padding: '4px 10px',
               borderRadius: '8px',
               fontSize: '12px',
@@ -257,7 +257,7 @@ export function TrackAnalyticsView({
 
         <div className="stat-card">
           <span>Challenge score</span>
-          <strong style={{ fontSize: '28px', color: '#648BFF' }}>
+          <strong style={{ fontSize: '28px', color: 'var(--accent)' }}>
             {challengeProgress}%
           </strong>
           <div className="progress-track" style={{ margin: '8px 0 6px' }}>
@@ -317,16 +317,16 @@ export function TrackAnalyticsView({
               style={{
                 padding: '14px 16px',
                 borderRadius: '12px',
-                background: m.reached ? 'rgba(74, 222, 128, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                border: `1px solid ${m.reached ? 'rgba(74, 222, 128, 0.35)' : 'var(--border)'}`,
+                background: m.reached ? 'color-mix(in srgb, var(--status-completed) 10%, transparent)' : 'rgba(255, 255, 255, 0.02)',
+                border: `1px solid ${m.reached ? 'color-mix(in srgb, var(--status-completed) 35%, transparent)' : 'var(--border)'}`,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '6px',
-                boxShadow: m.reached ? '0 0 16px rgba(74, 222, 128, 0.12)' : 'none',
+                boxShadow: m.reached ? '0 0 16px color-mix(in srgb, var(--status-completed) 15%, transparent)' : 'none',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '18px', fontWeight: 700, color: m.reached ? '#4ADE80' : 'var(--text)' }}>
+                <span style={{ fontSize: '18px', fontWeight: 700, color: m.reached ? 'var(--status-completed)' : 'var(--text)' }}>
                   {m.threshold}%
                 </span>
                 {m.reached ? (
@@ -335,7 +335,7 @@ export function TrackAnalyticsView({
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '4px',
-                      color: '#4ADE80',
+                      color: 'var(--status-completed)',
                       fontSize: '11px',
                       fontWeight: 600,
                     }}
@@ -358,7 +358,7 @@ export function TrackAnalyticsView({
       <section className="panel" style={{ padding: '24px' }}>
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <TrendingUp size={18} style={{ color: '#648BFF' }} />
+            <TrendingUp size={18} style={{ color: 'var(--accent)' }} />
             <h3 style={{ margin: 0, fontSize: '16px' }}>Completion Trend Over Time</h3>
           </div>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
@@ -373,19 +373,19 @@ export function TrackAnalyticsView({
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="analyticsTrendGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#648BFF" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#648BFF" stopOpacity={0.0} />
+                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#293750" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis
                     dataKey="weekLabel"
-                    stroke="#9AA9C2"
+                    stroke="var(--muted)"
                     fontSize={12}
                     tickLine={false}
                   />
                   <YAxis
-                    stroke="#9AA9C2"
+                    stroke="var(--muted)"
                     fontSize={12}
                     domain={[0, 100]}
                     tickFormatter={(v: number) => `${v}%`}
@@ -393,7 +393,7 @@ export function TrackAnalyticsView({
                   />
                   <Tooltip
                     contentStyle={{
-                      background: 'rgba(16, 24, 43, 0.95)',
+                      background: 'var(--card)',
                       border: '1px solid var(--border)',
                       borderRadius: '8px',
                       color: 'var(--text)',
@@ -408,7 +408,7 @@ export function TrackAnalyticsView({
                   <Area
                     type="monotone"
                     dataKey="percentage"
-                    stroke="#648BFF"
+                    stroke="var(--accent)"
                     strokeWidth={2.5}
                     fillOpacity={1}
                     fill="url(#analyticsTrendGradient)"
@@ -440,7 +440,7 @@ export function TrackAnalyticsView({
                   }}
                 >
                   <span className="muted">Week {d.weekNumber}: </span>
-                  <strong style={{ color: '#DDE7FF' }}>{d.percentage.toFixed(1)}%</strong>
+                  <strong style={{ color: 'var(--text)' }}>{d.percentage.toFixed(1)}%</strong>
                 </div>
               ))}
             </div>
@@ -458,7 +458,7 @@ export function TrackAnalyticsView({
       <section className="panel" style={{ padding: '24px' }}>
         <div style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Target size={18} style={{ color: '#648BFF' }} />
+            <Target size={18} style={{ color: 'var(--accent)' }} />
             <h3 style={{ margin: 0, fontSize: '16px' }}>Per-Activity Performance</h3>
           </div>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: '13px' }}>
@@ -522,7 +522,7 @@ export function TrackAnalyticsView({
                         style={{
                           fontSize: '13px',
                           fontWeight: 700,
-                          color: avgPct >= 80 ? '#4ADE80' : avgPct >= 50 ? '#60A5FA' : 'var(--text)',
+                          color: avgPct >= 80 ? 'var(--status-completed)' : avgPct >= 50 ? 'var(--status-partial)' : 'var(--text)',
                         }}
                       >
                         {avgPct.toFixed(1)}% avg
@@ -537,10 +537,10 @@ export function TrackAnalyticsView({
                         width: `${Math.min(100, Math.max(0, avgPct))}%`,
                         background:
                           avgPct >= 80
-                            ? '#4ADE80'
+                            ? 'var(--status-completed)'
                             : avgPct >= 50
-                            ? 'linear-gradient(90deg, #648BFF, #A78BFA)'
-                            : '#FCD34D',
+                            ? 'var(--progress-gradient)'
+                            : 'var(--status-pending)',
                       }}
                     />
                   </div>
@@ -561,7 +561,7 @@ export function TrackAnalyticsView({
                       <strong style={{ color: 'var(--text)' }}>{act.days_completed}</strong> days target met
                     </span>
                     <span>
-                      Total logged: <strong style={{ color: '#DDE7FF' }}>{act.total_logged}</strong> {unitLabel}
+                      Total logged: <strong style={{ color: 'var(--text)' }}>{act.total_logged}</strong> {unitLabel}
                     </span>
                   </div>
                 </article>

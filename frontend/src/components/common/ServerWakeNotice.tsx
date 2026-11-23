@@ -32,19 +32,19 @@ export function ServerWakeNotice() {
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        background: 'linear-gradient(135deg, rgba(21, 31, 53, 0.98), rgba(27, 41, 66, 0.98))',
-        border: '1px solid rgba(100, 139, 255, 0.4)',
-        boxShadow: '0 12px 36px rgba(3, 7, 18, 0.5), 0 0 20px rgba(100, 139, 255, 0.2)',
+        background: 'var(--card)',
+        border: '1px solid var(--border)',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.4), 0 0 20px color-mix(in srgb, var(--accent) 20%, transparent)',
         borderRadius: '12px',
         padding: '12px 20px',
-        color: '#E0EAFF',
+        color: 'var(--text)',
         fontSize: '14px',
         fontWeight: 600,
         backdropFilter: 'blur(12px)',
         animation: 'slide-down 0.25s ease-out',
       }}
     >
-      <CloudLightning size={18} style={{ color: '#648BFF', animation: 'pulse 1.5s infinite' }} />
+      <CloudLightning size={18} style={{ color: 'var(--accent)', animation: 'pulse 1.5s infinite' }} />
       <span>{message || 'Waking up the server, this can take up to a minute on the first visit'}</span>
       <style>{`
         @keyframes slide-down {

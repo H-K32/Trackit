@@ -182,8 +182,8 @@ export function ActivityDetail() {
             style={{
               width: '32px',
               height: '32px',
-              border: '3px solid rgba(100, 139, 255, 0.2)',
-              borderTopColor: '#648BFF',
+              border: '3px solid var(--border)',
+              borderTopColor: 'var(--accent)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
               margin: '0 auto 12px',
@@ -204,7 +204,7 @@ export function ActivityDetail() {
           <ArrowLeft size={16} /> Back to Track
         </button>
         <div className="panel" style={{ textAlign: 'center', padding: '40px 20px', marginTop: '20px' }}>
-          <p style={{ color: '#F87171', marginBottom: '16px' }}>{generalError || 'Unable to load activity.'}</p>
+          <p style={{ color: 'var(--status-missed)', marginBottom: '16px' }}>{generalError || 'Unable to load activity.'}</p>
           <button className="button secondary" onClick={loadAll}>
             <RotateCcw size={16} /> Retry
           </button>
@@ -336,7 +336,7 @@ export function ActivityDetail() {
               type="button"
               className="button secondary"
               onClick={() => setDeleteOpen(true)}
-              style={{ color: '#F87171', borderColor: 'rgba(248, 113, 113, 0.3)' }}
+              style={{ color: 'var(--status-missed)', borderColor: 'color-mix(in srgb, var(--status-missed) 30%, transparent)' }}
             >
               <Trash2 size={16} />
               Delete
@@ -345,11 +345,11 @@ export function ActivityDetail() {
             <span
               style={{
                 fontSize: '12px',
-                color: '#E0A050',
+                color: 'var(--status-pending)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: 'rgba(245, 158, 11, 0.1)',
+                background: 'color-mix(in srgb, var(--status-pending) 10%, transparent)',
                 padding: '6px 10px',
                 borderRadius: '8px',
               }}
@@ -369,14 +369,14 @@ export function ActivityDetail() {
                 style={{
                   display: 'inline-flex',
                   padding: '12px',
-                  background: 'rgba(96, 165, 250, 0.12)',
+                  background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
                   borderRadius: '50%',
                   marginBottom: '12px',
                 }}
               >
-                <Clock3 size={24} style={{ color: '#60A5FA' }} />
+                <Clock3 size={24} style={{ color: 'var(--accent)' }} />
               </div>
-              <h3 style={{ margin: '0 0 6px', color: '#DDE7FF' }}>Logging is not open yet</h3>
+              <h3 style={{ margin: '0 0 6px', color: 'var(--text)' }}>Logging is not open yet</h3>
               <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--muted)', lineHeight: 1.5 }}>
                 This track is upcoming and starts on <strong>{formatYmd(track.start_date)}</strong>. Daily logs can only be recorded once the track is active.
               </p>
@@ -397,13 +397,13 @@ export function ActivityDetail() {
                   </h2>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  {logStatus === 'saving' && <small style={{ color: '#60A5FA' }}>Saving...</small>}
+                  {logStatus === 'saving' && <small style={{ color: 'var(--accent)' }}>Saving...</small>}
                   {logStatus === 'saved' && (
-                    <small style={{ color: '#4ADE80', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    <small style={{ color: 'var(--status-completed)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                       <Check size={13} /> Saved
                     </small>
                   )}
-                  {logStatus === 'error' && <small style={{ color: '#F87171' }}>{logErrorMessage}</small>}
+                  {logStatus === 'error' && <small style={{ color: 'var(--status-missed)' }}>{logErrorMessage}</small>}
                 </div>
               </div>
 

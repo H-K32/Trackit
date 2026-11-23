@@ -211,7 +211,7 @@ export function AddActivityModal({
             />
           </label>
           {fieldErrors.name && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.name[0]}
             </small>
           )}
@@ -226,7 +226,7 @@ export function AddActivityModal({
             />
           </label>
           {fieldErrors.description && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.description[0]}
             </small>
           )}
@@ -246,7 +246,7 @@ export function AddActivityModal({
               </select>
             </label>
             {fieldErrors.tracking_type && (
-              <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '4px' }}>
+              <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '4px' }}>
                 {fieldErrors.tracking_type[0]}
               </small>
             )}
@@ -299,13 +299,13 @@ export function AddActivityModal({
           {trackingType === 'checkbox' && (
             <div
               style={{
-                background: 'rgba(100, 139, 255, 0.08)',
-                border: '1px solid rgba(100, 139, 255, 0.2)',
+                background: 'color-mix(in srgb, var(--accent) 8%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)',
                 borderRadius: '8px',
                 padding: '10px 14px',
                 marginBottom: '16px',
                 fontSize: '13px',
-                color: '#C4D7FF',
+                color: 'var(--text)',
               }}
             >
               Checkbox metric: complete once a day (target is 1, no unit).
@@ -313,12 +313,12 @@ export function AddActivityModal({
           )}
 
           {fieldErrors.daily_target && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.daily_target[0]}
             </small>
           )}
           {fieldErrors.unit && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.unit[0]}
             </small>
           )}
@@ -479,7 +479,7 @@ export function EditActivityModal({
             />
           </label>
           {fieldErrors.name && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.name[0]}
             </small>
           )}
@@ -493,7 +493,7 @@ export function EditActivityModal({
             />
           </label>
           {fieldErrors.description && (
-            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+            <small className="field-error" style={{ color: 'var(--status-missed)', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
               {fieldErrors.description[0]}
             </small>
           )}
@@ -501,13 +501,13 @@ export function EditActivityModal({
           {!isUpcoming && (
             <div
               style={{
-                background: 'rgba(245, 158, 11, 0.1)',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
+                background: 'color-mix(in srgb, var(--status-pending) 10%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--status-pending) 30%, transparent)',
                 borderRadius: '8px',
                 padding: '10px 14px',
                 marginBottom: '16px',
                 fontSize: '13px',
-                color: '#FCD34D',
+                color: 'var(--status-pending)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
@@ -673,8 +673,8 @@ export function DeleteActivityModal({
       <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
         <div className="modal-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertTriangle size={20} color="#F87171" />
-            <h2 style={{ color: '#F87171', margin: 0 }}>Delete Activity</h2>
+            <AlertTriangle size={20} color="var(--status-missed)" />
+            <h2 style={{ color: 'var(--status-missed)', margin: 0 }}>Delete Activity</h2>
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close modal">
             ×
@@ -705,8 +705,8 @@ export function DeleteActivityModal({
               onClick={handleDelete}
               disabled={submitting}
               style={{
-                background: '#DC2626',
-                color: '#FFFFFF',
+                background: 'var(--status-missed)',
+                color: 'white',
                 border: 'none',
               }}
             >

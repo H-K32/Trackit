@@ -131,15 +131,15 @@ export function AuthPage() {
                 padding: '12px 14px',
                 marginBottom: '16px',
                 fontSize: '13px',
-                background: 'rgba(100, 139, 255, 0.12)',
-                border: '1px solid rgba(100, 139, 255, 0.3)',
-                color: '#C4D7FF',
+                background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                color: 'var(--text)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
               }}
             >
-              <CloudLightning size={16} style={{ color: '#648BFF', flexShrink: 0 }} />
+              <CloudLightning size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
               <span>Waking up the server, this can take a minute...</span>
             </div>
           )}

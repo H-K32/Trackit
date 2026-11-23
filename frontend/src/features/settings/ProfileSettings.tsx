@@ -8,23 +8,29 @@ import {
   Globe,
   Lock,
   Mail,
+  Palette,
   RotateCcw,
   Search,
   Shield,
+  Sparkles,
   User as UserIcon,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext.tsx'
+import { useTheme } from '../../context/ThemeContext.tsx'
 import { updateProfile, me as apiMe } from '../../api/auth.ts'
 import type { UpdateProfilePayload } from '../../api/auth.ts'
 import type { ApiError } from '../../api/client.ts'
 
 interface ProfileSettingsProps {
-  mode?: 'profile' | 'settings'
+  mode?: 'profile' | 'settings' | 'appearance'
 }
 
 export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
   const { user, updateUser } = useAuth()
-  const [activeTab, setActiveTab] = useState<'profile' | 'settings'>(mode)
+  const { theme, setTheme, themes, currentThemeInfo } = useTheme()
+  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'settings'>(
+    mode === 'settings' ? 'appearance' : mode === 'appearance' ? 'appearance' : 'profile'
+  )
 
   // Form states
   const [name, setName] = useState(user?.name || '')
@@ -247,6 +253,7 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
           marginBottom: '24px',
           borderBottom: '1px solid var(--border)',
           paddingBottom: '12px',
+          flexWrap: 'wrap',
         }}
       >
         <button
@@ -256,6 +263,14 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
           style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
         >
           <UserIcon size={15} /> Profile & Timezone
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('appearance')}
+          className={`button ${activeTab === 'appearance' ? 'primary' : 'secondary'}`}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Palette size={15} /> Appearance & Themes
         </button>
         <button
           type="button"
@@ -275,12 +290,12 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            background: 'rgba(74, 222, 128, 0.1)',
-            border: '1px solid rgba(74, 222, 128, 0.3)',
+            background: 'color-mix(in srgb, var(--status-completed) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--status-completed) 30%, transparent)',
             borderRadius: '12px',
             padding: '12px 16px',
             marginBottom: '20px',
-            color: '#4ADE80',
+            color: 'var(--status-completed)',
             fontSize: '14px',
           }}
         >
@@ -296,12 +311,12 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            background: 'rgba(248, 113, 113, 0.1)',
-            border: '1px solid rgba(248, 113, 113, 0.3)',
+            background: 'color-mix(in srgb, var(--status-missed) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--status-missed) 30%, transparent)',
             borderRadius: '12px',
             padding: '12px 16px',
             marginBottom: '20px',
-            color: '#F87171',
+            color: 'var(--status-missed)',
             fontSize: '14px',
           }}
         >
@@ -346,13 +361,13 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
                   padding: '0 14px',
                   borderRadius: '10px',
                   background: 'var(--surface)',
-                  border: fieldErrors.name?.length ? '1px solid #F87171' : '1px solid var(--border)',
+                  border: fieldErrors.name?.length ? '1px solid var(--status-missed)' : '1px solid var(--border)',
                   color: 'var(--text)',
                   fontSize: '14px',
                 }}
               />
               {fieldErrors.name?.map((err, i) => (
-                <p key={i} style={{ color: '#F87171', fontSize: '12px', margin: '6px 0 0' }}>
+                <p key={i} style={{ color: 'var(--status-missed)', fontSize: '12px', margin: '6px 0 0' }}>
                   {err}
                 </p>
               ))}
@@ -427,11 +442,11 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
                   <span
                     style={{
                       fontSize: '12px',
-                      color: '#E0A050',
+                      color: 'var(--status-pending)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '4px',
-                      background: 'rgba(245, 158, 11, 0.1)',
+                      background: 'color-mix(in srgb, var(--status-pending) 12%, transparent)',
                       padding: '2px 8px',
                       borderRadius: '6px',
                     }}
@@ -447,7 +462,7 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#60A5FA',
+                        color: 'var(--accent)',
                         fontSize: '12px',
                         cursor: 'pointer',
                         padding: 0,
@@ -474,9 +489,9 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
                     borderRadius: '10px',
                     background: isTimezoneLocked ? 'rgba(255, 255, 255, 0.03)' : 'var(--surface)',
                     border: fieldErrors.timezone?.length
-                      ? '1px solid #F87171'
+                      ? '1px solid var(--status-missed)'
                       : isTimezoneLocked
-                      ? '1px solid rgba(245, 158, 11, 0.3)'
+                      ? '1px solid color-mix(in srgb, var(--status-pending) 30%, transparent)'
                       : '1px solid var(--border)',
                     color: isTimezoneLocked ? 'var(--muted)' : 'var(--text)',
                     fontSize: '14px',
@@ -497,20 +512,20 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
                     left: '12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: isTimezoneLocked ? '#E0A050' : 'var(--muted)',
+                    color: isTimezoneLocked ? 'var(--status-pending)' : 'var(--muted)',
                   }}
                 />
               </div>
 
               {/* Locked Timezone Explanation */}
               {isTimezoneLocked && (
-                <p style={{ color: '#FCD34D', fontSize: '12px', margin: '6px 0 0', lineHeight: 1.4 }}>
+                <p style={{ color: 'var(--status-pending)', fontSize: '12px', margin: '6px 0 0', lineHeight: 1.4 }}>
                   Timezone cannot be changed while a track is running to preserve schedule consistency. Once your active challenge concludes, you can change your timezone.
                 </p>
               )}
 
               {fieldErrors.timezone?.map((err, i) => (
-                <p key={i} style={{ color: '#F87171', fontSize: '12px', margin: '6px 0 0' }}>
+                <p key={i} style={{ color: 'var(--status-missed)', fontSize: '12px', margin: '6px 0 0' }}>
                   {err}
                 </p>
               ))}
@@ -579,9 +594,9 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
                             style={{
                               padding: '8px 12px',
                               borderRadius: '6px',
-                              background: isCurrent ? 'rgba(100, 139, 255, 0.15)' : 'transparent',
+                              background: isCurrent ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
                               border: 'none',
-                              color: isCurrent ? '#93C5FD' : 'var(--text)',
+                              color: isCurrent ? 'var(--accent)' : 'var(--text)',
                               fontSize: '13px',
                               textAlign: 'left',
                               cursor: 'pointer',
@@ -591,7 +606,7 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
                             }}
                           >
                             <span>{tz}</span>
-                            {isCurrent && <Check size={14} color="#648BFF" />}
+                            {isCurrent && <Check size={14} color="var(--accent)" />}
                           </button>
                         )
                       })
@@ -638,11 +653,134 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
         </form>
       )}
 
+      {/* Theme & Appearance Tab / Section */}
+      {(activeTab === 'appearance' || activeTab === 'settings') && (
+        <section className="panel" style={{ padding: '28px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Palette size={20} style={{ color: 'var(--accent)' }} />
+              <h2 style={{ margin: 0, fontSize: '18px' }}>Color Themes</h2>
+            </div>
+            <span className="muted" style={{ fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Sparkles size={14} style={{ color: 'var(--accent)' }} />
+              Active: <strong style={{ color: 'var(--text)' }}>{currentThemeInfo.name}</strong>
+            </span>
+          </div>
+          <p className="muted" style={{ margin: '0 0 20px', fontSize: '13px' }}>
+            Choose a color palette for your workspace. Themes change colors instantly and persist across sessions.
+          </p>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '14px',
+            }}
+          >
+            {themes.map((t) => {
+              const isActive = t.id === theme
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTheme(t.id)}
+                  style={{
+                    background: t.swatches.card,
+                    border: isActive ? '2px solid var(--accent)' : `1px solid ${t.swatches.border}`,
+                    borderRadius: '14px',
+                    padding: '16px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.18s ease',
+                    position: 'relative',
+                    boxShadow: isActive ? '0 0 0 1px var(--accent), 0 8px 24px rgba(0, 0, 0, 0.35)' : 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '14px', color: t.swatches.text }}>
+                        {t.name}
+                      </div>
+                      <div style={{ fontSize: '11px', color: t.swatches.muted, marginTop: '2px' }}>
+                        {t.tagline}
+                      </div>
+                    </div>
+                    {isActive ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: 'var(--accent)',
+                          color: 'var(--accent-text)',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                        }}
+                      >
+                        <Check size={12} /> Active
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: t.swatches.muted,
+                          border: `1px solid ${t.swatches.border}`,
+                          padding: '2px 6px',
+                          borderRadius: '8px',
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        {t.colorScheme}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Swatches strip */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      height: '24px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: `1px solid ${t.swatches.border}`,
+                      background: t.swatches.midnight,
+                    }}
+                  >
+                    <div title="Background" style={{ flex: 1, background: t.swatches.midnight }} />
+                    <div title="Surface" style={{ flex: 1, background: t.swatches.surface }} />
+                    <div title="Card" style={{ flex: 1, background: t.swatches.card }} />
+                    <div title="Accent" style={{ flex: 1.5, background: t.swatches.accent }} />
+                    <div title="Accent 2" style={{ flex: 1, background: t.swatches.accent2 }} />
+                    <div title="Completed" style={{ flex: 1, background: t.swatches.statusCompleted }} />
+                  </div>
+
+                  <p
+                    style={{
+                      fontSize: '12px',
+                      lineHeight: 1.4,
+                      color: t.swatches.muted,
+                      margin: 0,
+                    }}
+                  >
+                    {t.description}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Workspace Information Tab */}
       {activeTab === 'settings' && (
         <section className="panel" style={{ padding: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
-            <Shield size={20} style={{ color: '#648BFF' }} />
+            <Shield size={20} style={{ color: 'var(--accent)' }} />
             <h2 style={{ margin: 0, fontSize: '18px' }}>Account & Security Details</h2>
           </div>
 
@@ -668,7 +806,7 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
               }}
             >
               <span className="muted">Primary Timezone</span>
-              <strong style={{ color: '#DDE7FF' }}>{user?.timezone || 'UTC'}</strong>
+              <strong style={{ color: 'var(--text)' }}>{user?.timezone || 'UTC'}</strong>
             </div>
 
             <div
@@ -682,8 +820,8 @@ export function ProfileSettings({ mode = 'profile' }: ProfileSettingsProps) {
               <span className="muted">Account Status</span>
               <span
                 style={{
-                  color: '#4ADE80',
-                  background: 'rgba(74, 222, 128, 0.1)',
+                  color: 'var(--status-completed)',
+                  background: 'color-mix(in srgb, var(--status-completed) 12%, transparent)',
                   padding: '2px 8px',
                   borderRadius: '6px',
                   fontWeight: 600,
