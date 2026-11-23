@@ -55,3 +55,14 @@ export async function logout(): Promise<LogoutResponse> {
 export async function me(): Promise<User> {
   return client.get<User>('/me')
 }
+
+export interface UpdateProfilePayload {
+  name?: string
+  timezone?: string
+  email?: string
+  current_password?: string
+}
+
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+  return client.patch<User>('/me', payload)
+}

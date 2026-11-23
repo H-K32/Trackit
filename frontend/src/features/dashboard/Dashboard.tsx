@@ -362,6 +362,8 @@ export function Dashboard() {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '6px',
                     }}
                   >
                     <span>

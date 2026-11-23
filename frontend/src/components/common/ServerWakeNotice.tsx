@@ -45,7 +45,7 @@ export function ServerWakeNotice() {
       }}
     >
       <CloudLightning size={18} style={{ color: '#648BFF', animation: 'pulse 1.5s infinite' }} />
-      <span>{message || 'Waking up the server, this can take a minute...'}</span>
+      <span>{message || 'Waking up the server, this can take up to a minute on the first visit'}</span>
       <style>{`
         @keyframes slide-down {
           from { opacity: 0; transform: translate(-50%, -10px); }

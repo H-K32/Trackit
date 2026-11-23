@@ -307,7 +307,7 @@ export function ActivityDetail() {
         <ArrowLeft size={16} /> Back to {track.name}
       </button>
 
-      <header className="detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <header className="detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
             <span className="category" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>

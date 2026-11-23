@@ -681,7 +681,7 @@ export function DeleteActivityModal({
           </button>
         </div>
 
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '16px 0 0' }}>
           {error && (
             <div className="auth-alert" role="alert" style={{ marginBottom: '16px' }}>
               <strong>{error}</strong>

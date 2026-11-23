@@ -307,7 +307,7 @@ export function TrackAnalyticsView({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
             gap: '12px',
           }}
         >
@@ -553,6 +553,8 @@ export function TrackAnalyticsView({
                       justifyContent: 'space-between',
                       fontSize: '12px',
                       color: 'var(--muted)',
+                      flexWrap: 'wrap',
+                      gap: '6px',
                     }}
                   >
                     <span>

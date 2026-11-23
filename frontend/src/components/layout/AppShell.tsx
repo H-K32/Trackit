@@ -63,17 +63,8 @@ export function AppShell({ onLogout }: { onLogout?: () => void } = {}) {
           </NavLink>
           <button
             type="button"
-            className="nav-item"
+            className="nav-item logout-button"
             onClick={handleLogout}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              width: '100%',
-              textAlign: 'left',
-              font: 'inherit',
-              color: 'inherit',
-            }}
           >
             <LogOut size={18}/>
             <span>Log out</span>

@@ -13,6 +13,7 @@ interface AuthContextType {
   login: (payload: LoginPayload) => Promise<User>
   register: (payload: RegisterPayload) => Promise<User>
   logout: () => Promise<void>
+  updateUser: (updatedUser: User) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -92,6 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.user
   }
 
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser)
+  }
+
   const logout = async (): Promise<void> => {
     try {
       await apiLogout()
@@ -99,6 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Proceed with clearing local state even if logout endpoint fails
     } finally {
       clearStoredToken()
+      try {
+        localStorage.clear()
+        sessionStorage.clear()
+      } catch {
+        // Ignore storage restrictions
+      }
       setToken(null)
       setUser(null)
     }
@@ -113,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
+      updateUser,
     }),
     [user, token, isInitializing]
   )

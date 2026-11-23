@@ -237,7 +237,7 @@ export function Analytics() {
         </div>
 
         {/* Track Selector Dropdown */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <label htmlFor="analytics-track-select" style={{ fontSize: '13px', color: 'var(--muted)' }}>
             Select track:
           </label>
@@ -254,7 +254,8 @@ export function Analytics() {
               color: 'var(--text)',
               fontSize: '14px',
               cursor: 'pointer',
-              minWidth: '200px',
+              minWidth: '180px',
+              maxWidth: '100%',
             }}
           >
             {tracks.map((t) => (

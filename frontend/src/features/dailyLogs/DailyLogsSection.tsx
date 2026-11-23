@@ -329,7 +329,7 @@ export function DailyLogsSection({
   const isToday = selectedDate === today
 
   return (
-    <section className="panel" style={{ padding: '24px', marginTop: '24px' }}>
+    <section className="panel daily-logs-panel" style={{ marginTop: '24px' }}>
       {/* Date Navigation & Summary Header */}
       <div
         style={{
@@ -342,7 +342,7 @@ export function DailyLogsSection({
           borderBottom: '1px solid var(--border)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="icon-button"
@@ -353,9 +353,9 @@ export function DailyLogsSection({
             <ChevronLeft size={18} />
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CalendarDays size={18} style={{ color: '#60A5FA' }} />
-            <strong style={{ fontSize: '16px', color: 'var(--text)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <CalendarDays size={18} style={{ color: '#60A5FA', flexShrink: 0 }} />
+            <strong style={{ fontSize: '15px', color: 'var(--text)' }}>
               {formatYmd(selectedDate, {
                 weekday: 'short',
                 month: 'short',

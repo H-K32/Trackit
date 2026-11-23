@@ -257,6 +257,7 @@ export function TrackCalendar({
       <div style={{ marginTop: '20px' }}>
         {/* Day of Week Column Headers */}
         <div
+          className="track-calendar-header-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
@@ -283,20 +284,13 @@ export function TrackCalendar({
         </div>
 
         {/* Calendar Cells Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '8px',
-          }}
-        >
+        <div className="track-calendar-grid">
           {/* Empty spacer cells before day 1 */}
           {Array.from({ length: firstDayOfWeek }).map((_, i) => (
             <div
               key={`blank-${i}`}
+              className="track-calendar-cell"
               style={{
-                minHeight: '84px',
-                borderRadius: '12px',
                 background: 'transparent',
                 border: '1px dashed rgba(255, 255, 255, 0.03)',
               }}
@@ -310,10 +304,8 @@ export function TrackCalendar({
               return (
                 <div
                   key={dateStr}
+                  className="track-calendar-cell"
                   style={{
-                    minHeight: '84px',
-                    padding: '8px',
-                    borderRadius: '12px',
                     background: 'rgba(255, 255, 255, 0.01)',
                     border: '1px solid rgba(255, 255, 255, 0.04)',
                     opacity: 0.35,
@@ -342,10 +334,8 @@ export function TrackCalendar({
                 onClick={() => onSelectDate(dateStr)}
                 onMouseEnter={() => setHoveredDate(dateStr)}
                 onMouseLeave={() => setHoveredDate(null)}
+                className="track-calendar-cell"
                 style={{
-                  minHeight: '84px',
-                  padding: '8px',
-                  borderRadius: '12px',
                   background: statusInfo.bg,
                   border: isSelected
                     ? '2px solid #648BFF'
@@ -403,6 +393,7 @@ export function TrackCalendar({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', margin: '4px 0' }}>
                   {renderStatusIcon(status)}
                   <span
+                    className="track-calendar-cell-label"
                     style={{
                       fontSize: '11px',
                       fontWeight: 600,
@@ -428,7 +419,7 @@ export function TrackCalendar({
                     {Math.round(completionPct)}%
                   </span>
                   {!loggable && (
-                    <span style={{ fontSize: '9px', color: 'var(--muted)' }} title="Read-only date">
+                    <span className="track-calendar-cell-readonly" style={{ fontSize: '9px', color: 'var(--muted)' }} title="Read-only date">
                       Read-only
                     </span>
                   )}
@@ -509,7 +500,7 @@ export function TrackCalendar({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
             gap: '10px',
             fontSize: '12px',
           }}

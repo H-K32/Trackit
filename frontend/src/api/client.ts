@@ -95,7 +95,7 @@ function getBaseUrl(): string {
   return 'http://localhost/api'
 }
 
-export async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
+async function executeRequest<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
   const baseUrl = getBaseUrl()
   const cleanPath = path.startsWith('/') ? path : `/${path}`
 
@@ -138,7 +138,7 @@ export async function request<T = unknown>(path: string, options: RequestOptions
     }
   }
 
-  // 90s timeout for cold start waking, 5s notification
+  // 90s timeout for cold start waking, 4s notification
   const controller = new AbortController()
   if (options.signal) {
     options.signal.addEventListener('abort', () => controller.abort())
@@ -147,8 +147,8 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   let didNotifySlow = false
   const slowTimer = setTimeout(() => {
     didNotifySlow = true
-    notifySlowNotice(true, 'Waking up the server, this can take a minute...')
-  }, 5000)
+    notifySlowNotice(true, 'Waking up the server, this can take up to a minute on the first visit')
+  }, 4000)
 
   const timeoutTimer = setTimeout(() => {
     controller.abort()
@@ -217,6 +217,28 @@ export async function request<T = unknown>(path: string, options: RequestOptions
       message,
     }
     throw networkError
+  }
+}
+
+/**
+ * Executes a request with automatic retry for failed GET requests (retries once on network failure, timeout, or 5xx).
+ * POST, PATCH, and DELETE are NEVER retried automatically.
+ */
+export async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase()
+  const canRetry = method === 'GET'
+
+  try {
+    return await executeRequest<T>(path, options)
+  } catch (error: unknown) {
+    if (canRetry) {
+      const apiErr = error as ApiError
+      // Retry once for network failure (status 0), timeout (status 408), or 5xx server errors
+      if (!apiErr.status || apiErr.status >= 500 || apiErr.status === 408) {
+        return await executeRequest<T>(path, options)
+      }
+    }
+    throw error
   }
 }
 

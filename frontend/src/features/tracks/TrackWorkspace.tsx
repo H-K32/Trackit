@@ -248,7 +248,7 @@ function DeleteTrackModal({ trackName, onClose, onConfirm }: DeleteTrackModalPro
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
         <div className="modal-head">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <AlertTriangle size={20} color="#F87171" />
             <h2 style={{ color: '#F87171', margin: 0 }}>Delete Track</h2>
           </div>
@@ -257,7 +257,7 @@ function DeleteTrackModal({ trackName, onClose, onConfirm }: DeleteTrackModalPro
           </button>
         </div>
 
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '16px 0 0' }}>
           {error && (
             <div className="auth-alert" role="alert" style={{ marginBottom: '16px' }}>
               <strong>{error}</strong>
@@ -609,7 +609,7 @@ export function TrackWorkspace() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button type="button" className="button secondary" onClick={() => setEditTrackOpen(true)}>
             <Pencil size={16} />
             Edit Track
@@ -713,20 +713,20 @@ export function TrackWorkspace() {
 
       {/* Workspace Navigation Tabs */}
       <div
+        className="workspace-tabs-bar"
         style={{
           display: 'flex',
           gap: '8px',
           margin: '28px 0 16px',
           borderBottom: '1px solid var(--border)',
           paddingBottom: '12px',
-          overflowX: 'auto',
         }}
       >
         <button
           type="button"
           onClick={() => setActiveTab('logs')}
           className={`button ${activeTab === 'logs' ? 'primary' : 'secondary'}`}
-          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
           <Clock3 size={15} /> Daily Log
         </button>
@@ -738,7 +738,7 @@ export function TrackWorkspace() {
             fetchCalendar()
           }}
           className={`button ${activeTab === 'calendar' ? 'primary' : 'secondary'}`}
-          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
           <CalendarDays size={15} /> Calendar Grid
         </button>
@@ -750,7 +750,7 @@ export function TrackWorkspace() {
             fetchAnalytics()
           }}
           className={`button ${activeTab === 'analytics' ? 'primary' : 'secondary'}`}
-          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
           <BarChart3 size={15} /> Analytics
         </button>
@@ -759,7 +759,7 @@ export function TrackWorkspace() {
           type="button"
           onClick={() => setActiveTab('activities')}
           className={`button ${activeTab === 'activities' ? 'primary' : 'secondary'}`}
-          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', flexShrink: 0 }}
         >
           <Target size={15} /> Activities ({activities.length})
         </button>
