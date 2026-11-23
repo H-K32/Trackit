@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { FormEvent } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -19,6 +19,9 @@ import { getTrack, getTrackProgress, updateTrack, deleteTrack } from '../../api/
 import type { TrackItem, TrackProgressDetail, UpdateTrackPayload } from '../../api/tracks.ts'
 import { getActivities, formatActivityTarget } from '../../api/activities.ts'
 import type { ActivityItem } from '../../api/activities.ts'
+import { getTrackCalendar } from '../../api/dailyLogs.ts'
+import type { CalendarDayItem } from '../../api/dailyLogs.ts'
+import { DailyLogsSection } from '../dailyLogs/DailyLogsSection.tsx'
 import {
   AddActivityModal,
   EditActivityModal,
@@ -31,6 +34,8 @@ import {
   calculateEndDate,
   getTomorrowInTimezone,
   formatTrackStatus,
+  formatDayStatus,
+  getTodayInTimezone,
 } from '../../utils/date.ts'
 
 interface EditTrackModalProps {
@@ -291,10 +296,12 @@ export function TrackWorkspace() {
   const { trackId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const activitiesRef = useRef<HTMLDivElement>(null)
 
   const [track, setTrack] = useState<TrackItem | null>(null)
   const [progress, setProgress] = useState<TrackProgressDetail | null>(null)
   const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [calendarDays, setCalendarDays] = useState<CalendarDayItem[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [generalError, setGeneralError] = useState<string | null>(null)
@@ -315,11 +322,13 @@ export function TrackWorkspace() {
       getTrack(trackId),
       getTrackProgress(trackId).catch(() => null),
       getActivities(trackId).catch(() => []),
+      getTrackCalendar(trackId).catch(() => null),
     ])
-      .then(([trackData, progressData, activitiesData]) => {
+      .then(([trackData, progressData, activitiesData, calendarData]) => {
         setTrack(trackData)
         setProgress(progressData)
         setActivities(activitiesData)
+        if (calendarData) setCalendarDays(calendarData.days)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -333,6 +342,15 @@ export function TrackWorkspace() {
       })
   }
 
+  // Refresh progress & calendar when logs are updated
+  const refreshStats = () => {
+    if (!trackId) return
+    getTrackProgress(trackId).then(setProgress).catch(() => {})
+    getTrackCalendar(trackId)
+      .then((cal) => setCalendarDays(cal.days))
+      .catch(() => {})
+  }
+
   useEffect(() => {
     if (!trackId) {
       return
@@ -343,12 +361,14 @@ export function TrackWorkspace() {
       getTrack(trackId),
       getTrackProgress(trackId).catch(() => null),
       getActivities(trackId).catch(() => []),
+      getTrackCalendar(trackId).catch(() => null),
     ])
-      .then(([trackData, progressData, activitiesData]) => {
+      .then(([trackData, progressData, activitiesData, calendarData]) => {
         if (!ignore) {
           setTrack(trackData)
           setProgress(progressData)
           setActivities(activitiesData)
+          if (calendarData) setCalendarDays(calendarData.days)
           setLoading(false)
         }
       })
@@ -371,9 +391,7 @@ export function TrackWorkspace() {
 
   const handleTrackUpdateSuccess = (updated: TrackItem) => {
     setTrack(updated)
-    if (trackId) {
-      getTrackProgress(trackId).then(setProgress).catch(() => {})
-    }
+    refreshStats()
   }
 
   const handleTrackDeleteConfirm = async () => {
@@ -384,15 +402,22 @@ export function TrackWorkspace() {
 
   const handleActivityCreated = (newActivity: ActivityItem) => {
     setActivities((prev) => [...prev, newActivity])
+    refreshStats()
   }
 
   const handleActivityUpdated = (updated: ActivityItem) => {
     setActivities((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+    refreshStats()
   }
 
   const handleActivityDeleted = () => {
     if (!deletingActivity) return
     setActivities((prev) => prev.filter((a) => a.id !== deletingActivity.id))
+    refreshStats()
+  }
+
+  const scrollToActivities = () => {
+    activitiesRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   if (notFound) {
@@ -470,6 +495,9 @@ export function TrackWorkspace() {
       : track.status === 'upcoming'
       ? '#60A5FA'
       : '#94A3B8'
+
+  const userTz = user?.timezone
+  const today = getTodayInTimezone(userTz)
 
   return (
     <div className="page workspace">
@@ -630,8 +658,17 @@ export function TrackWorkspace() {
         </section>
       )}
 
+      {/* Slice 4: Daily Logs Section (Today / Day View) */}
+      <DailyLogsSection
+        track={track}
+        userTimezone={userTz}
+        calendarDays={calendarDays}
+        onStatsUpdated={refreshStats}
+        onScrollToActivities={scrollToActivities}
+      />
+
       {/* Activities Section */}
-      <section style={{ marginTop: '24px' }}>
+      <section ref={activitiesRef} style={{ marginTop: '24px' }}>
         <div className="section-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h2>Activities</h2>
@@ -819,22 +856,68 @@ export function TrackWorkspace() {
         )}
       </section>
 
-      {/* Placeholder sections for slices 4-5 */}
-      <section className="bottom-grid" style={{ marginTop: '24px' }}>
-        <div className="panel">
-          <h2>Track calendar</h2>
-          <div className="calendar-strip">
-            {Array.from({ length: 14 }, (_, i) => (
-              <div key={i} className={i === 9 ? 'today' : ''}>
-                <small>{i + 1}</small>
-                <i className={i < 10 ? 'filled' : ''} />
-              </div>
-            ))}
+      {/* Live Track Calendar Strip */}
+      <section className="panel" style={{ marginTop: '24px', padding: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '16px' }}>Track calendar</h2>
+            <p className="muted" style={{ margin: '2px 0 0', fontSize: '13px' }}>
+              Full {track.duration_days}-day challenge schedule
+            </p>
           </div>
         </div>
-        <div className="panel">
-          <h2>Recent logs</h2>
-          <p className="muted">Daily logs will appear here once activities are tracked.</p>
+
+        <div
+          className="calendar-strip"
+          style={{
+            display: 'flex',
+            gap: '8px',
+            overflowX: 'auto',
+            paddingBottom: '8px',
+          }}
+        >
+          {calendarDays.length > 0 ? (
+            calendarDays.map((d) => {
+              const statusCfg = formatDayStatus(d.day_status)
+              const isTodayDate = d.date === today
+
+              return (
+                <div
+                  key={d.date}
+                  className={`calendar-day-item ${isTodayDate ? 'today' : ''}`}
+                  style={{
+                    flex: '0 0 54px',
+                    textAlign: 'center',
+                    padding: '8px 4px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: isTodayDate
+                      ? '1px solid #60A5FA'
+                      : '1px solid var(--border)',
+                  }}
+                  title={`${formatYmd(d.date)}: ${statusCfg.label} (${Math.round(d.completion_percentage)}%)`}
+                >
+                  <small style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>
+                    {d.day_number}
+                  </small>
+                  <i
+                    style={{
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '50%',
+                      display: 'inline-block',
+                      background: statusCfg.color,
+                    }}
+                  />
+                  <span style={{ display: 'block', fontSize: '10px', marginTop: '4px', color: 'var(--text)' }}>
+                    {Math.round(d.completion_percentage)}%
+                  </span>
+                </div>
+              )
+            })
+          ) : (
+            <p className="muted" style={{ fontSize: '13px' }}>No calendar data available.</p>
+          )}
         </div>
       </section>
 

@@ -16,13 +16,27 @@ import { getTrack } from '../../api/tracks.ts'
 import type { TrackItem } from '../../api/tracks.ts'
 import { getActivity, formatActivityTarget } from '../../api/activities.ts'
 import type { ActivityItem } from '../../api/activities.ts'
+import {
+  getDailyLog,
+  upsertDailyLog,
+  deleteDailyLog,
+  getActivityLogsHistory,
+} from '../../api/dailyLogs.ts'
+import type { DailyLogItem } from '../../api/dailyLogs.ts'
 import { EditActivityModal, DeleteActivityModal } from './ActivityModals.tsx'
+import { useAuth } from '../../context/AuthContext.tsx'
 import type { ApiError } from '../../api/client.ts'
-import { formatYmd } from '../../utils/date.ts'
+import {
+  formatYmd,
+  getTodayInTimezone,
+  addDaysToYmd,
+  checkDateLoggable,
+} from '../../utils/date.ts'
 
 export function ActivityDetail() {
   const { trackId, activityId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [track, setTrack] = useState<TrackItem | null>(null)
   const [activity, setActivity] = useState<ActivityItem | null>(null)
@@ -30,15 +44,23 @@ export function ActivityDetail() {
   const [notFound, setNotFound] = useState(false)
   const [generalError, setGeneralError] = useState<string | null>(null)
 
+  // Modals state
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  // Placeholder state for daily log counter (slice 4 will connect this to backend)
-  const [placeholderValue, setPlaceholderValue] = useState(0)
-  const [placeholderCompleted, setPlaceholderCompleted] = useState(false)
-  const [placeholderNotes, setPlaceholderNotes] = useState('')
+  // Real log state for today
+  const today = getTodayInTimezone(user?.timezone)
+  const [todayLog, setTodayLog] = useState<DailyLogItem | null>(null)
+  const [logValue, setLogValue] = useState<number>(0)
+  const [isCompleted, setIsCompleted] = useState<boolean>(false)
+  const [notes, setNotes] = useState<string>('')
+  const [logStatus, setLogStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [logErrorMessage, setLogErrorMessage] = useState<string>('')
 
-  const loadData = () => {
+  // History logs for last 7 days
+  const [historyLogs, setHistoryLogs] = useState<DailyLogItem[]>([])
+
+  const loadAll = () => {
     if (!trackId || !activityId) {
       setNotFound(true)
       setLoading(false)
@@ -48,13 +70,28 @@ export function ActivityDetail() {
     setLoading(true)
     setGeneralError(null)
 
+    const fromDate = addDaysToYmd(today, -6)
+
     Promise.all([
       getTrack(trackId),
       getActivity(trackId, activityId),
+      getDailyLog(trackId, activityId, today).catch(() => null),
+      getActivityLogsHistory(trackId, activityId, fromDate, today).catch(() => []),
     ])
-      .then(([trackData, activityData]) => {
+      .then(([trackData, activityData, logData, historyData]) => {
         setTrack(trackData)
         setActivity(activityData)
+        setTodayLog(logData)
+        if (logData) {
+          setLogValue(logData.actual_value ?? 0)
+          setIsCompleted(Boolean(logData.is_completed))
+          setNotes(logData.notes ?? '')
+        } else {
+          setLogValue(0)
+          setIsCompleted(false)
+          setNotes('')
+        }
+        setHistoryLogs(historyData)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -72,14 +109,29 @@ export function ActivityDetail() {
     if (!trackId || !activityId) return
 
     let ignore = false
+    const fromDate = addDaysToYmd(today, -6)
+
     Promise.all([
       getTrack(trackId),
       getActivity(trackId, activityId),
+      getDailyLog(trackId, activityId, today).catch(() => null),
+      getActivityLogsHistory(trackId, activityId, fromDate, today).catch(() => []),
     ])
-      .then(([trackData, activityData]) => {
+      .then(([trackData, activityData, logData, historyData]) => {
         if (!ignore) {
           setTrack(trackData)
           setActivity(activityData)
+          setTodayLog(logData)
+          if (logData) {
+            setLogValue(logData.actual_value ?? 0)
+            setIsCompleted(Boolean(logData.is_completed))
+            setNotes(logData.notes ?? '')
+          } else {
+            setLogValue(0)
+            setIsCompleted(false)
+            setNotes('')
+          }
+          setHistoryLogs(historyData)
           setLoading(false)
         }
       })
@@ -98,7 +150,7 @@ export function ActivityDetail() {
     return () => {
       ignore = true
     }
-  }, [trackId, activityId])
+  }, [trackId, activityId, today])
 
   if (notFound) {
     return (
@@ -153,7 +205,7 @@ export function ActivityDetail() {
         </button>
         <div className="panel" style={{ textAlign: 'center', padding: '40px 20px', marginTop: '20px' }}>
           <p style={{ color: '#F87171', marginBottom: '16px' }}>{generalError || 'Unable to load activity.'}</p>
-          <button className="button secondary" onClick={loadData}>
+          <button className="button secondary" onClick={loadAll}>
             <RotateCcw size={16} /> Retry
           </button>
         </div>
@@ -162,6 +214,7 @@ export function ActivityDetail() {
   }
 
   const isUpcoming = track.status === 'upcoming'
+  const loggableCheck = checkDateLoggable(today, track.start_date, track.end_date, user?.timezone)
 
   const handleUpdateSuccess = (updated: ActivityItem) => {
     setActivity(updated)
@@ -170,6 +223,83 @@ export function ActivityDetail() {
   const handleDeleteSuccess = () => {
     navigate(`/tracks/${track.id}`, { replace: true })
   }
+
+  // Save log value or notes
+  const handleSaveLog = async (newVal: number, newNotes?: string) => {
+    if (!trackId || !activityId || !loggableCheck.loggable) return
+
+    setLogStatus('saving')
+    setLogErrorMessage('')
+
+    try {
+      if (activity.tracking_type === 'checkbox') {
+        // Handled separately
+        return
+      }
+
+      // If value is 0 and log already exists, delete
+      if (newVal === 0 && !newNotes && todayLog) {
+        await deleteDailyLog(trackId, activityId, today)
+        setTodayLog(null)
+        setLogValue(0)
+        setLogStatus('saved')
+        return
+      }
+
+      const saved = await upsertDailyLog(trackId, activityId, today, {
+        value: newVal,
+        notes: newNotes !== undefined ? (newNotes.trim() || null) : notes.trim() || null,
+      })
+      setTodayLog(saved)
+      setLogValue(saved.actual_value ?? newVal)
+      setLogStatus('saved')
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      setLogStatus('error')
+      setLogErrorMessage(apiErr.message || 'Failed to save daily log.')
+    }
+  }
+
+  // Toggle checkbox metric
+  const handleToggleCheckbox = async () => {
+    if (!trackId || !activityId || !loggableCheck.loggable) return
+
+    const nextCompleted = !isCompleted
+    setIsCompleted(nextCompleted)
+    setLogStatus('saving')
+    setLogErrorMessage('')
+
+    try {
+      if (!nextCompleted) {
+        // Delete if unchecking
+        if (todayLog) {
+          await deleteDailyLog(trackId, activityId, today)
+          setTodayLog(null)
+        }
+        setLogStatus('saved')
+      } else {
+        const saved = await upsertDailyLog(trackId, activityId, today, {
+          is_completed: true,
+          notes: notes.trim() || null,
+        })
+        setTodayLog(saved)
+        setLogStatus('saved')
+      }
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      setIsCompleted(!nextCompleted) // Revert on failure
+      setLogStatus('error')
+      setLogErrorMessage(apiErr.message || 'Failed to update log.')
+    }
+  }
+
+  const progressPct =
+    todayLog?.progress_percentage ??
+    (activity.tracking_type === 'checkbox'
+      ? isCompleted
+        ? 100
+        : 0
+      : Math.min(100, Math.round((logValue / activity.daily_target) * 100)))
 
   return (
     <div className="page detail-page">
@@ -230,7 +360,7 @@ export function ActivityDetail() {
         </div>
       </header>
 
-      {/* Placeholder sections for slice 4 (daily logs) */}
+      {/* Daily Logs Section */}
       <div className="detail-grid">
         <section className="panel log-panel">
           {isUpcoming ? (
@@ -250,90 +380,117 @@ export function ActivityDetail() {
               <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--muted)', lineHeight: 1.5 }}>
                 This track is upcoming and starts on <strong>{formatYmd(track.start_date)}</strong>. Daily logs can only be recorded once the track is active.
               </p>
-              <span
-                style={{
-                  display: 'inline-block',
-                  fontSize: '12px',
-                  color: '#94A3B8',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                Full daily logs integration coming in Slice 4
-              </span>
             </div>
           ) : (
             <>
               <div className="log-top">
                 <div>
-                  <p className="eyebrow">TODAY&apos;S LOG (SLICE 4 PREVIEW)</p>
+                  <p className="eyebrow">TODAY&apos;S PROGRESS ({formatYmd(today)})</p>
                   <h2>
-                    {placeholderValue}{' '}
-                    <span>
-                      / {activity.daily_target} {activity.unit || 'target'}
-                    </span>
+                    {activity.tracking_type === 'checkbox'
+                      ? isCompleted
+                        ? '1 / 1 completed'
+                        : '0 / 1 completed'
+                      : `${logValue} / ${activity.daily_target} ${
+                          activity.tracking_type === 'duration' ? 'minutes' : activity.unit || ''
+                        }`}
                   </h2>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  {logStatus === 'saving' && <small style={{ color: '#60A5FA' }}>Saving...</small>}
+                  {logStatus === 'saved' && (
+                    <small style={{ color: '#4ADE80', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                      <Check size={13} /> Saved
+                    </small>
+                  )}
+                  {logStatus === 'error' && <small style={{ color: '#F87171' }}>{logErrorMessage}</small>}
                 </div>
               </div>
 
-              <div className="counter">
+              {activity.tracking_type === 'checkbox' ? (
                 <button
                   type="button"
-                  onClick={() => setPlaceholderValue((v) => Math.max(0, v - 1))}
+                  className={`button ${isCompleted ? 'complete-button' : 'primary'} log-button`}
+                  onClick={handleToggleCheckbox}
+                  disabled={!loggableCheck.loggable || logStatus === 'saving'}
+                  style={{ width: '100%', margin: '16px 0', padding: '12px' }}
                 >
-                  <Minus />
+                  {isCompleted ? <Check size={18} /> : null}
+                  {isCompleted ? 'Completed for today' : 'Mark as complete'}
                 </button>
-                <strong>{placeholderValue}</strong>
-                <button
-                  type="button"
-                  onClick={() => setPlaceholderValue((v) => v + 1)}
-                >
-                  <Plus />
-                </button>
-              </div>
-
-              <button
-                type="button"
-                className={`button ${placeholderCompleted ? 'complete-button' : 'primary'} log-button`}
-                onClick={() => {
-                  setPlaceholderCompleted((c) => !c)
-                  if (!placeholderCompleted) {
-                    setPlaceholderValue(activity.daily_target)
-                  }
-                }}
-              >
-                {placeholderCompleted ? <Check size={18} /> : null}
-                {placeholderCompleted ? 'Completed for today' : 'Mark as complete'}
-              </button>
+              ) : (
+                <div className="counter" style={{ margin: '16px 0' }}>
+                  <button
+                    type="button"
+                    disabled={!loggableCheck.loggable || logValue <= 0 || logStatus === 'saving'}
+                    onClick={() => {
+                      const next = Math.max(0, logValue - 1)
+                      setLogValue(next)
+                      handleSaveLog(next)
+                    }}
+                  >
+                    <Minus />
+                  </button>
+                  <strong>{logValue}</strong>
+                  <button
+                    type="button"
+                    disabled={!loggableCheck.loggable || logStatus === 'saving'}
+                    onClick={() => {
+                      const next = logValue + 1
+                      setLogValue(next)
+                      handleSaveLog(next)
+                    }}
+                  >
+                    <Plus />
+                  </button>
+                </div>
+              )}
 
               <label className="notes" style={{ marginTop: '16px' }}>
-                Notes
+                Journal notes
                 <textarea
-                  value={placeholderNotes}
-                  onChange={(e) => setPlaceholderNotes(e.target.value)}
-                  placeholder="Add observations, mistakes, or next steps..."
+                  value={notes}
+                  disabled={!loggableCheck.loggable}
+                  onChange={(e) => setNotes(e.target.value)}
+                  onBlur={() => handleSaveLog(logValue, notes)}
+                  placeholder="Add observations, reflections, or details about today's practice..."
+                  rows={3}
                 />
               </label>
             </>
           )}
         </section>
 
+        {/* History Panel with Real Logs */}
         <section className="panel history-panel">
           <h2>Recent progress</h2>
-          <p className="muted" style={{ fontSize: '13px', margin: '8px 0 16px' }}>
-            Log history will populate here in Slice 4.
+          <p className="muted" style={{ fontSize: '13px', margin: '4px 0 16px' }}>
+            Activity completion for the last 7 days
           </p>
-          <div className="calendar-mini">
-            <h3>Activity History</h3>
-            <div>
-              {Array.from({ length: 30 }, (_, i) => (
-                <span key={i} className={i < 5 ? 'logged' : ''}>
-                  {i + 1}
-                </span>
-              ))}
-            </div>
+
+          <div className="history-bars" style={{ minHeight: '120px' }}>
+            {Array.from({ length: 7 }, (_, i) => {
+              const d = addDaysToYmd(today, i - 6)
+              const logOnDate = historyLogs.find((l) => l.log_date === d)
+              const val = logOnDate?.actual_value ?? (logOnDate?.is_completed ? 1 : 0)
+              const pct = logOnDate?.progress_percentage ?? 0
+              const dayLabel = formatYmd(d, { weekday: 'narrow' })
+
+              return (
+                <div key={d} title={`${formatYmd(d)}: ${val} logged (${pct}%)`}>
+                  <span>{dayLabel}</span>
+                  <div>
+                    <i style={{ height: `${Math.max(6, Math.min(100, pct))}%` }} />
+                  </div>
+                  <strong>{val}</strong>
+                </div>
+              )
+            })}
+          </div>
+
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--muted)' }}>
+            <span>Score today: <strong>{progressPct}%</strong></span>
+            <span>Target: <strong>{formatActivityTarget(activity)}</strong></span>
           </div>
         </section>
       </div>
@@ -346,7 +503,7 @@ export function ActivityDetail() {
           activity={activity}
           onClose={() => setEditOpen(false)}
           onSuccess={handleUpdateSuccess}
-          onTrackLocked={loadData}
+          onTrackLocked={loadAll}
         />
       )}
 
@@ -357,7 +514,7 @@ export function ActivityDetail() {
           activity={activity}
           onClose={() => setDeleteOpen(false)}
           onSuccess={handleDeleteSuccess}
-          onTrackLocked={loadData}
+          onTrackLocked={loadAll}
         />
       )}
     </div>

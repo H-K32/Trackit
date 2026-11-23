@@ -124,3 +124,50 @@ export function formatTrackStatus(
   }
   return status
 }
+
+/**
+ * Check whether a date is within the loggable window:
+ * from track start_date to min(today, end_date),
+ * where today is in the user's timezone.
+ */
+export function checkDateLoggable(
+  date: string,
+  startDate: string,
+  endDate: string,
+  userTimezone?: string
+): { loggable: boolean; reason?: string } {
+  const today = getTodayInTimezone(userTimezone)
+  if (date < startDate) {
+    return { loggable: false, reason: 'This date is before the track started.' }
+  }
+  if (date > today) {
+    return { loggable: false, reason: 'Future dates cannot be logged in advance.' }
+  }
+  if (date > endDate) {
+    return { loggable: false, reason: 'This date is after the track ended.' }
+  }
+  return { loggable: true }
+}
+
+/**
+ * Format day status into readable labels and colors:
+ * completed, partial, missed, upcoming, pending, no_activities
+ */
+export function formatDayStatus(status: string): { label: string; color: string; bg: string } {
+  switch (status) {
+    case 'completed':
+      return { label: 'Completed', color: '#4ADE80', bg: 'rgba(74, 222, 128, 0.12)' }
+    case 'partial':
+      return { label: 'Partial', color: '#60A5FA', bg: 'rgba(96, 165, 250, 0.12)' }
+    case 'missed':
+      return { label: 'Missed', color: '#F87171', bg: 'rgba(248, 113, 113, 0.12)' }
+    case 'pending':
+      return { label: 'Pending', color: '#FCD34D', bg: 'rgba(252, 211, 77, 0.12)' }
+    case 'upcoming':
+      return { label: 'Upcoming', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' }
+    case 'no_activities':
+      return { label: 'No activities', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' }
+    default:
+      return { label: status || 'Unknown', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' }
+  }
+}
