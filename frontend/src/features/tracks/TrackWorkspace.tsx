@@ -1,25 +1,665 @@
+import { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Check, ChevronRight, CirclePlus, Gamepad2, Puzzle, ScanSearch, Target } from 'lucide-react'
-import type { Track, Activity } from '../../types'
-import { activityProgress, addDays, trackProgress } from '../../utils'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CalendarDays,
+  Check,
+  CirclePlus,
+  Clock3,
+  Pencil,
+  RotateCcw,
+  Target,
+  Trash2,
+} from 'lucide-react'
+import { getTrack, getTrackProgress, updateTrack, deleteTrack } from '../../api/tracks.ts'
+import type { TrackItem, TrackProgressDetail, UpdateTrackPayload } from '../../api/tracks.ts'
+import { useAuth } from '../../context/AuthContext.tsx'
+import type { ApiError } from '../../api/client.ts'
+import {
+  formatYmd,
+  calculateEndDate,
+  getTomorrowInTimezone,
+  formatTrackStatus,
+} from '../../utils/date.ts'
 
-function ActivityIcon({template}:{template:string}) {
-  const Icon = template.includes('Puzzle') ? Puzzle : template.includes('Game') ? Gamepad2 : template.includes('Opening') || template.includes('Endgame') ? ScanSearch : template.includes('Reading') || template.includes('Lesson') ? BookOpen : Target
-  return <Icon size={18}/>
+interface EditTrackModalProps {
+  track: TrackItem
+  onClose: () => void
+  onSuccess: (updated: TrackItem) => void
+  userTimezone?: string
 }
 
-export function TrackWorkspace({tracks,onUpdate}:{tracks:Track[],onUpdate:(tracks:Track[])=>void}) {
-  const {trackId}=useParams(); const navigate=useNavigate(); const track=tracks.find(t=>t.id===trackId)
-  if(!track)return <div className="page"><h2>Track not found</h2></div>
-  const progress=trackProgress(track.activities)
-  const addActivity=(template:string)=>{const activity:Activity={id:`activity-${Date.now()}`,trackId:track.id,name:template,description:'A daily practice activity.',template:template as Activity['template'],trackingType:'numeric',unit:'minutes',dailyTarget:15,required:false,records:[{date:'2026-11-19',value:0,completed:false}]}; onUpdate(tracks.map(t=>t.id===track.id?{...t,activities:[...t.activities,activity]}:t)); navigate(`/tracks/${track.id}/activities/${activity.id}`)}
-  return <div className="page workspace">
-    <button className="back-button" onClick={()=>navigate('/')}><ArrowLeft size={16}/>Dashboard</button>
-    <header className="workspace-header"><div><span className="category"><span className="knight">♞</span> Chess Track</span><h1>{track.name}</h1><p className="muted">{track.description}</p></div><button className="button primary" onClick={()=>addActivity('Custom')}><CirclePlus size={18}/>Add Activity</button></header>
-    <section className="stats-grid"><div className="stat-card"><span>Overall progress</span><strong>{progress}%</strong><div className="progress-track"><span style={{width:`${progress}%`}}/></div></div><div className="stat-card"><span>Days completed</span><strong>10</strong><small>of {track.durationDays} days</small></div><div className="stat-card"><span>Days remaining</span><strong>{Math.max(0,track.durationDays-10)}</strong><small>Ends {addDays(track.startDate,track.durationDays)}</small></div></section>
-    <section><div className="section-heading"><div><h2>Activities</h2><p>{track.activities.length} activities in this track</p></div></div>
-      <div className="activity-grid">{track.activities.map(a=>{const ap=activityProgress(a); return <article className="activity-card" key={a.id} onClick={()=>navigate(`/tracks/${track.id}/activities/${a.id}`)}><div className="activity-card-head"><span className="activity-icon"><ActivityIcon template={a.template} /></span><span className={`tiny-status ${ap===100?'complete':''}`}>{ap===100?<Check size={13}/>:null}{ap===100?'Complete':'In progress'}</span></div><h3>{a.name}</h3><p>{a.description}</p><div className="progress-row"><span>Today</span><strong>{a.records.at(-1)?.value||0}/{a.dailyTarget} {a.unit}</strong></div><div className="progress-track"><span style={{width:`${ap}%`}}/></div><button className="card-link">Open activity <ChevronRight size={16}/></button></article>})}</div>
-    </section>
-    <section className="bottom-grid"><div className="panel"><h2>Track calendar</h2><div className="calendar-strip">{Array.from({length:14},(_,i)=><div key={i} className={i===9?'today':''}><small>{i+6}</small><i className={i<10?'filled':''}/></div>)}</div></div><div className="panel"><h2>Recent activity</h2>{track.activities.slice(-3).reverse().map(a=><div className="activity-row compact" key={a.id}><span className="activity-icon"><ActivityIcon template={a.template}/></span><div><strong>{a.name}</strong><p>Today</p></div><span className="activity-value">{a.records.at(-1)?.value||0}/{a.dailyTarget}</span></div>)}</div></section>
-  </div>
+function EditTrackModal({ track, onClose, onSuccess, userTimezone }: EditTrackModalProps) {
+  const minStartDate = getTomorrowInTimezone(userTimezone)
+  const isUpcoming = track.status === 'upcoming'
+
+  const [name, setName] = useState(track.name)
+  const [description, setDescription] = useState(track.description || '')
+  const [startDate, setStartDate] = useState(track.start_date)
+  const [duration, setDuration] = useState(track.duration_days)
+  const [submitting, setSubmitting] = useState(false)
+  const [generalError, setGeneralError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
+
+  const calculatedEndDate = calculateEndDate(startDate, duration)
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setGeneralError('')
+    setFieldErrors({})
+
+    const payload: UpdateTrackPayload = {}
+    if (name.trim() !== track.name) {
+      payload.name = name.trim()
+    }
+    if ((description.trim() || null) !== (track.description || null)) {
+      payload.description = description.trim() || null
+    }
+    if (isUpcoming) {
+      if (startDate !== track.start_date) {
+        payload.start_date = startDate
+      }
+      if (duration !== track.duration_days) {
+        payload.duration_days = duration
+      }
+    }
+
+    // Nothing changed
+    if (Object.keys(payload).length === 0) {
+      onClose()
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const updated = await updateTrack(track.id, payload)
+      onSuccess(updated)
+      onClose()
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      setGeneralError(apiErr.message || 'Failed to update track.')
+      if (apiErr.errors) {
+        setFieldErrors(apiErr.errors)
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div>
+            <span className="eyebrow">TRACK SETTINGS</span>
+            <h2>Edit Track</h2>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close modal">
+            ×
+          </button>
+        </div>
+
+        {generalError && (
+          <div className="auth-alert" role="alert" style={{ margin: '16px 20px 0' }}>
+            <strong>{generalError}</strong>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate style={{ padding: '20px' }}>
+          <label>
+            Track name
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </label>
+          {fieldErrors.name && (
+            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+              {fieldErrors.name[0]}
+            </small>
+          )}
+
+          <label>
+            Description (optional)
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
+          </label>
+          {fieldErrors.description && (
+            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+              {fieldErrors.description[0]}
+            </small>
+          )}
+
+          <div className="form-grid">
+            <label>
+              Start date
+              <input
+                type="date"
+                min={minStartDate}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                disabled={!isUpcoming}
+                style={!isUpcoming ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                required
+              />
+            </label>
+            <label>
+              Duration (days)
+              <input
+                type="number"
+                min="1"
+                value={duration}
+                onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                disabled={!isUpcoming}
+                style={!isUpcoming ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                required
+              />
+            </label>
+          </div>
+
+          {!isUpcoming && (
+            <small
+              className="helper-text"
+              style={{ color: '#E0A050', display: 'block', margin: '-4px 0 12px', fontSize: '12px' }}
+            >
+              The track schedule cannot be changed after it has started.
+            </small>
+          )}
+
+          {fieldErrors.start_date && (
+            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+              {fieldErrors.start_date[0]}
+            </small>
+          )}
+          {fieldErrors.duration_days && (
+            <small className="field-error" style={{ color: '#F87171', display: 'block', marginTop: '-8px', marginBottom: '12px' }}>
+              {fieldErrors.duration_days[0]}
+            </small>
+          )}
+
+          {isUpcoming && (
+            <div className="end-date" style={{ marginBottom: '20px' }}>
+              <CalendarDays size={16} />
+              <span>Calculated end date:</span>
+              <strong>{formatYmd(calculatedEndDate)}</strong>
+            </div>
+          )}
+
+          <div className="modal-actions">
+            <button type="button" className="button secondary" onClick={onClose} disabled={submitting}>
+              Cancel
+            </button>
+            <button type="submit" className="button primary" disabled={submitting}>
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+interface DeleteTrackModalProps {
+  trackName: string
+  onClose: () => void
+  onConfirm: () => Promise<void>
+}
+
+function DeleteTrackModal({ trackName, onClose, onConfirm }: DeleteTrackModalProps) {
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleDelete = async () => {
+    setError('')
+    setSubmitting(true)
+    try {
+      await onConfirm()
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      setError(apiErr.message || 'Failed to delete track. Please try again.')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+        <div className="modal-head">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={20} color="#F87171" />
+            <h2 style={{ color: '#F87171', margin: 0 }}>Delete Track</h2>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close modal">
+            ×
+          </button>
+        </div>
+
+        <div style={{ padding: '20px' }}>
+          {error && (
+            <div className="auth-alert" role="alert" style={{ marginBottom: '16px' }}>
+              <strong>{error}</strong>
+            </div>
+          )}
+
+          <p style={{ color: 'var(--text)', margin: '0 0 12px', fontSize: '14px', lineHeight: 1.5 }}>
+            Are you sure you want to delete <strong>{trackName}</strong>?
+          </p>
+          <p style={{ color: 'var(--muted)', margin: '0 0 20px', fontSize: '13px', lineHeight: 1.5 }}>
+            This will permanently delete the track, along with all of its activities and daily logs. This action cannot be undone.
+          </p>
+
+          <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="button secondary" onClick={onClose} disabled={submitting}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={handleDelete}
+              disabled={submitting}
+              style={{
+                background: '#DC2626',
+                color: '#FFFFFF',
+                border: 'none',
+              }}
+            >
+              {submitting ? 'Deleting...' : 'Delete Track'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function TrackWorkspace() {
+  const { trackId } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const [track, setTrack] = useState<TrackItem | null>(null)
+  const [progress, setProgress] = useState<TrackProgressDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+  const [generalError, setGeneralError] = useState<string | null>(null)
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  const fetchTrackData = () => {
+    if (!trackId) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    setGeneralError(null)
+
+    Promise.all([
+      getTrack(trackId),
+      getTrackProgress(trackId).catch(() => null),
+    ])
+      .then(([trackData, progressData]) => {
+        setTrack(trackData)
+        setProgress(progressData)
+        setLoading(false)
+      })
+      .catch((err: unknown) => {
+        const apiErr = err as ApiError
+        if (apiErr.status === 403 || apiErr.status === 404) {
+          setNotFound(true)
+        } else {
+          setGeneralError(apiErr.message || 'Failed to load track.')
+        }
+        setLoading(false)
+      })
+  }
+
+  useEffect(() => {
+    if (!trackId) {
+      return
+    }
+
+    let ignore = false
+    Promise.all([
+      getTrack(trackId),
+      getTrackProgress(trackId).catch(() => null),
+    ])
+      .then(([trackData, progressData]) => {
+        if (!ignore) {
+          setTrack(trackData)
+          setProgress(progressData)
+          setLoading(false)
+        }
+      })
+      .catch((err: unknown) => {
+        if (!ignore) {
+          const apiErr = err as ApiError
+          if (apiErr.status === 403 || apiErr.status === 404) {
+            setNotFound(true)
+          } else {
+            setGeneralError(apiErr.message || 'Failed to load track.')
+          }
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [trackId])
+
+  const handleUpdateSuccess = (updated: TrackItem) => {
+    setTrack(updated)
+    // Reload progress if dates/schedule changed
+    if (trackId) {
+      getTrackProgress(trackId).then(setProgress).catch(() => {})
+    }
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!trackId) return
+    await deleteTrack(trackId)
+    navigate('/', { replace: true })
+  }
+
+  if (notFound) {
+    return (
+      <div className="page">
+        <button className="back-button" onClick={() => navigate('/')}>
+          <ArrowLeft size={16} /> Dashboard
+        </button>
+        <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', marginTop: '20px' }}>
+          <h2 style={{ marginBottom: '8px' }}>Track not found</h2>
+          <p className="muted" style={{ marginBottom: '24px' }}>
+            This track does not exist or you do not have permission to view it.
+          </p>
+          <button className="button primary" onClick={() => navigate('/')}>
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="page workspace">
+        <button className="back-button" onClick={() => navigate('/')}>
+          <ArrowLeft size={16} /> Dashboard
+        </button>
+        <div className="panel" style={{ textAlign: 'center', padding: '60px 20px', marginTop: '20px' }}>
+          <div
+            style={{
+              width: '32px',
+              height: '32px',
+              border: '3px solid rgba(100, 139, 255, 0.2)',
+              borderTopColor: '#648BFF',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto 12px',
+            }}
+          />
+          <p className="muted" style={{ margin: 0 }}>
+            Loading track details...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (generalError || !track) {
+    return (
+      <div className="page workspace">
+        <button className="back-button" onClick={() => navigate('/')}>
+          <ArrowLeft size={16} /> Dashboard
+        </button>
+        <div className="panel" style={{ textAlign: 'center', padding: '40px 20px', marginTop: '20px' }}>
+          <p style={{ color: '#F87171', marginBottom: '16px' }}>{generalError || 'Unable to load track.'}</p>
+          <button className="button secondary" onClick={fetchTrackData}>
+            <RotateCcw size={16} /> Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const overallPct = progress ? Math.round(progress.overall_percentage) : 0
+  const challengePct = progress ? Math.round(progress.challenge_progress) : 0
+  const completedDays = progress ? progress.completed_days : 0
+  const totalDays = progress ? progress.total_days : track.duration_days
+  const daysRemaining = progress ? progress.days_remaining : track.duration_days
+  const elapsedDays = progress ? progress.elapsed_days : 0
+
+  const statusColor =
+    track.status === 'active'
+      ? '#4ADE80'
+      : track.status === 'upcoming'
+      ? '#60A5FA'
+      : '#94A3B8'
+
+  return (
+    <div className="page workspace">
+      <button className="back-button" onClick={() => navigate('/')}>
+        <ArrowLeft size={16} /> Dashboard
+      </button>
+
+      <header className="workspace-header">
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+            <span className="category">
+              <Target size={14} /> Track
+            </span>
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                color: statusColor,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <i
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: statusColor,
+                  display: 'inline-block',
+                }}
+              />
+              {formatTrackStatus(track.status, track.start_date)}
+            </span>
+          </div>
+          <h1>{track.name}</h1>
+          {track.description && <p className="muted">{track.description}</p>}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              marginTop: '8px',
+              fontSize: '13px',
+              color: 'var(--muted)',
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <CalendarDays size={15} />
+              {formatYmd(track.start_date)} – {formatYmd(track.end_date)}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Clock3 size={15} />
+              {track.duration_days} days
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button type="button" className="button secondary" onClick={() => setEditOpen(true)}>
+            <Pencil size={16} />
+            Edit Track
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => setDeleteOpen(true)}
+            style={{ color: '#F87171', borderColor: 'rgba(248, 113, 113, 0.3)' }}
+          >
+            <Trash2 size={16} />
+            Delete
+          </button>
+          <button
+            type="button"
+            className="button primary"
+            onClick={() => alert('Activity management will be available in Slice 3.')}
+          >
+            <CirclePlus size={18} />
+            Add Activity
+          </button>
+        </div>
+      </header>
+
+      {/* Stats Grid */}
+      <section className="stats-grid">
+        <div className="stat-card">
+          <span>Overall progress</span>
+          <strong>{overallPct}%</strong>
+          <div className="progress-track">
+            <span style={{ width: `${Math.min(100, Math.max(0, overallPct))}%` }} />
+          </div>
+          <small>Average daily completion</small>
+        </div>
+
+        <div className="stat-card">
+          <span>Challenge progress</span>
+          <strong>{challengePct}%</strong>
+          <div className="progress-track">
+            <span style={{ width: `${Math.min(100, Math.max(0, challengePct))}%` }} />
+          </div>
+          <small>Cumulative duration score</small>
+        </div>
+
+        <div className="stat-card">
+          <span>Days completed</span>
+          <strong>{completedDays}</strong>
+          <small>of {totalDays} total days</small>
+        </div>
+
+        <div className="stat-card">
+          <span>Days remaining</span>
+          <strong>{daysRemaining}</strong>
+          <small>Elapsed: {elapsedDays} days</small>
+        </div>
+      </section>
+
+      {/* Milestones */}
+      {progress?.milestones && progress.milestones.length > 0 && (
+        <section className="panel" style={{ padding: '16px 20px', marginTop: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px' }}>Milestones</h3>
+            <span className="muted" style={{ fontSize: '13px' }}>
+              {progress.milestones.filter((m) => m.reached).length} of {progress.milestones.length} reached
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
+            {progress.milestones.map((m) => (
+              <div
+                key={m.threshold}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  background: m.reached ? 'rgba(74, 222, 128, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                  border: `1px solid ${m.reached ? 'rgba(74, 222, 128, 0.25)' : 'var(--border)'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <strong style={{ color: m.reached ? '#4ADE80' : 'var(--text)', fontSize: '15px' }}>
+                    {m.threshold}%
+                  </strong>
+                  {m.reached ? (
+                    <Check size={16} color="#4ADE80" />
+                  ) : (
+                    <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Pending</span>
+                  )}
+                </div>
+                <small style={{ color: 'var(--muted)', fontSize: '11px' }}>
+                  {m.reached && m.reached_on ? `Reached ${formatYmd(m.reached_on)}` : 'Incomplete'}
+                </small>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Placeholder sections for slice 3-5 */}
+      <section style={{ marginTop: '24px' }}>
+        <div className="section-heading">
+          <div>
+            <h2>Activities</h2>
+            <p>Track activities and daily practice</p>
+          </div>
+        </div>
+        <div className="panel" style={{ textAlign: 'center', padding: '36px 20px' }}>
+          <p className="muted" style={{ margin: '0 0 12px' }}>
+            No activities configured for this track yet.
+          </p>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => alert('Activity management will be available in Slice 3.')}
+          >
+            <CirclePlus size={16} />
+            Configure activities (Slice 3)
+          </button>
+        </div>
+      </section>
+
+      <section className="bottom-grid" style={{ marginTop: '24px' }}>
+        <div className="panel">
+          <h2>Track calendar</h2>
+          <div className="calendar-strip">
+            {Array.from({ length: 14 }, (_, i) => (
+              <div key={i} className={i === 9 ? 'today' : ''}>
+                <small>{i + 1}</small>
+                <i className={i < 10 ? 'filled' : ''} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="panel">
+          <h2>Recent logs</h2>
+          <p className="muted">Daily logs will appear here once activities are tracked.</p>
+        </div>
+      </section>
+
+      {editOpen && (
+        <EditTrackModal
+          track={track}
+          onClose={() => setEditOpen(false)}
+          onSuccess={handleUpdateSuccess}
+          userTimezone={user?.timezone}
+        />
+      )}
+
+      {deleteOpen && (
+        <DeleteTrackModal
+          trackName={track.name}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
+    </div>
+  )
 }

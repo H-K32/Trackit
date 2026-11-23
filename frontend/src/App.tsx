@@ -74,21 +74,8 @@ function AppContent() {
             )
           }
         >
-          <Route
-            index
-            element={
-              <Dashboard
-                tracks={tracks}
-                onCreate={(track) => setTracks([...tracks, track])}
-              />
-            }
-          />
-          <Route
-            path="tracks/:trackId"
-            element={
-              <TrackWorkspace tracks={tracks} onUpdate={setTracks} />
-            }
-          />
+          <Route index element={<Dashboard />} />
+          <Route path="tracks/:trackId" element={<TrackWorkspace />} />
           <Route
             path="tracks/:trackId/activities/:activityId"
             element={
