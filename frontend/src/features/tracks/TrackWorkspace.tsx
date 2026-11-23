@@ -6,8 +6,10 @@ import {
   ArrowLeft,
   CalendarDays,
   Check,
+  ChevronRight,
   CirclePlus,
   Clock3,
+  Lock,
   Pencil,
   RotateCcw,
   Target,
@@ -15,6 +17,13 @@ import {
 } from 'lucide-react'
 import { getTrack, getTrackProgress, updateTrack, deleteTrack } from '../../api/tracks.ts'
 import type { TrackItem, TrackProgressDetail, UpdateTrackPayload } from '../../api/tracks.ts'
+import { getActivities, formatActivityTarget } from '../../api/activities.ts'
+import type { ActivityItem } from '../../api/activities.ts'
+import {
+  AddActivityModal,
+  EditActivityModal,
+  DeleteActivityModal,
+} from '../activities/ActivityModals.tsx'
 import { useAuth } from '../../context/AuthContext.tsx'
 import type { ApiError } from '../../api/client.ts'
 import {
@@ -66,7 +75,6 @@ function EditTrackModal({ track, onClose, onSuccess, userTimezone }: EditTrackMo
       }
     }
 
-    // Nothing changed
     if (Object.keys(payload).length === 0) {
       onClose()
       return
@@ -286,30 +294,32 @@ export function TrackWorkspace() {
 
   const [track, setTrack] = useState<TrackItem | null>(null)
   const [progress, setProgress] = useState<TrackProgressDetail | null>(null)
+  const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [generalError, setGeneralError] = useState<string | null>(null)
 
-  const [editOpen, setEditOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  // Modals state
+  const [editTrackOpen, setEditTrackOpen] = useState(false)
+  const [deleteTrackOpen, setDeleteTrackOpen] = useState(false)
+  const [addActivityOpen, setAddActivityOpen] = useState(false)
+  const [editingActivity, setEditingActivity] = useState<ActivityItem | null>(null)
+  const [deletingActivity, setDeletingActivity] = useState<ActivityItem | null>(null)
 
-  const fetchTrackData = () => {
-    if (!trackId) {
-      setNotFound(true)
-      setLoading(false)
-      return
-    }
-
+  const reloadAll = () => {
+    if (!trackId) return
     setLoading(true)
     setGeneralError(null)
 
     Promise.all([
       getTrack(trackId),
       getTrackProgress(trackId).catch(() => null),
+      getActivities(trackId).catch(() => []),
     ])
-      .then(([trackData, progressData]) => {
+      .then(([trackData, progressData, activitiesData]) => {
         setTrack(trackData)
         setProgress(progressData)
+        setActivities(activitiesData)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -332,11 +342,13 @@ export function TrackWorkspace() {
     Promise.all([
       getTrack(trackId),
       getTrackProgress(trackId).catch(() => null),
+      getActivities(trackId).catch(() => []),
     ])
-      .then(([trackData, progressData]) => {
+      .then(([trackData, progressData, activitiesData]) => {
         if (!ignore) {
           setTrack(trackData)
           setProgress(progressData)
+          setActivities(activitiesData)
           setLoading(false)
         }
       })
@@ -357,18 +369,30 @@ export function TrackWorkspace() {
     }
   }, [trackId])
 
-  const handleUpdateSuccess = (updated: TrackItem) => {
+  const handleTrackUpdateSuccess = (updated: TrackItem) => {
     setTrack(updated)
-    // Reload progress if dates/schedule changed
     if (trackId) {
       getTrackProgress(trackId).then(setProgress).catch(() => {})
     }
   }
 
-  const handleDeleteConfirm = async () => {
+  const handleTrackDeleteConfirm = async () => {
     if (!trackId) return
     await deleteTrack(trackId)
     navigate('/', { replace: true })
+  }
+
+  const handleActivityCreated = (newActivity: ActivityItem) => {
+    setActivities((prev) => [...prev, newActivity])
+  }
+
+  const handleActivityUpdated = (updated: ActivityItem) => {
+    setActivities((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))
+  }
+
+  const handleActivityDeleted = () => {
+    if (!deletingActivity) return
+    setActivities((prev) => prev.filter((a) => a.id !== deletingActivity.id))
   }
 
   if (notFound) {
@@ -424,7 +448,7 @@ export function TrackWorkspace() {
         </button>
         <div className="panel" style={{ textAlign: 'center', padding: '40px 20px', marginTop: '20px' }}>
           <p style={{ color: '#F87171', marginBottom: '16px' }}>{generalError || 'Unable to load track.'}</p>
-          <button className="button secondary" onClick={fetchTrackData}>
+          <button className="button secondary" onClick={reloadAll}>
             <RotateCcw size={16} /> Retry
           </button>
         </div>
@@ -432,6 +456,7 @@ export function TrackWorkspace() {
     )
   }
 
+  const isUpcoming = track.status === 'upcoming'
   const overallPct = progress ? Math.round(progress.overall_percentage) : 0
   const challengePct = progress ? Math.round(progress.challenge_progress) : 0
   const completedDays = progress ? progress.completed_days : 0
@@ -504,27 +529,29 @@ export function TrackWorkspace() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button type="button" className="button secondary" onClick={() => setEditOpen(true)}>
+          <button type="button" className="button secondary" onClick={() => setEditTrackOpen(true)}>
             <Pencil size={16} />
             Edit Track
           </button>
           <button
             type="button"
             className="button secondary"
-            onClick={() => setDeleteOpen(true)}
+            onClick={() => setDeleteTrackOpen(true)}
             style={{ color: '#F87171', borderColor: 'rgba(248, 113, 113, 0.3)' }}
           >
             <Trash2 size={16} />
             Delete
           </button>
-          <button
-            type="button"
-            className="button primary"
-            onClick={() => alert('Activity management will be available in Slice 3.')}
-          >
-            <CirclePlus size={18} />
-            Add Activity
-          </button>
+          {isUpcoming && (
+            <button
+              type="button"
+              className="button primary"
+              onClick={() => setAddActivityOpen(true)}
+            >
+              <CirclePlus size={18} />
+              Add Activity
+            </button>
+          )}
         </div>
       </header>
 
@@ -603,29 +630,196 @@ export function TrackWorkspace() {
         </section>
       )}
 
-      {/* Placeholder sections for slice 3-5 */}
+      {/* Activities Section */}
       <section style={{ marginTop: '24px' }}>
-        <div className="section-heading">
+        <div className="section-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h2>Activities</h2>
-            <p>Track activities and daily practice</p>
+            <p>
+              {activities.length} {activities.length === 1 ? 'activity' : 'activities'} on this track (max 20)
+            </p>
           </div>
+          {!isUpcoming ? (
+            <span
+              style={{
+                fontSize: '12px',
+                color: '#E0A050',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(245, 158, 11, 0.1)',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+              }}
+            >
+              <Lock size={14} /> Activities are locked once a track starts
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="button primary"
+              onClick={() => setAddActivityOpen(true)}
+            >
+              <CirclePlus size={16} /> Add Activity
+            </button>
+          )}
         </div>
-        <div className="panel" style={{ textAlign: 'center', padding: '36px 20px' }}>
-          <p className="muted" style={{ margin: '0 0 12px' }}>
-            No activities configured for this track yet.
-          </p>
-          <button
-            type="button"
-            className="button secondary"
-            onClick={() => alert('Activity management will be available in Slice 3.')}
-          >
-            <CirclePlus size={16} />
-            Configure activities (Slice 3)
-          </button>
-        </div>
+
+        {activities.length === 0 ? (
+          isUpcoming ? (
+            <div
+              className="panel"
+              style={{
+                padding: '32px 24px',
+                textAlign: 'center',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                background: 'rgba(245, 158, 11, 0.08)',
+                borderRadius: '16px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'inline-flex',
+                  padding: '12px',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  borderRadius: '50%',
+                  marginBottom: '12px',
+                }}
+              >
+                <AlertTriangle size={24} color="#F59E0B" />
+              </div>
+              <h3 style={{ margin: '0 0 8px', color: '#FCD34D' }}>No activities configured yet</h3>
+              <p style={{ margin: '0 0 20px', color: '#FDE68A', fontSize: '14px' }}>
+                Add at least one activity before the track starts, because they can&apos;t be added later.
+              </p>
+              <button
+                type="button"
+                className="button primary"
+                onClick={() => setAddActivityOpen(true)}
+              >
+                <CirclePlus size={18} /> Add Your First Activity
+              </button>
+            </div>
+          ) : (
+            <div className="panel" style={{ textAlign: 'center', padding: '36px 20px' }}>
+              <p className="muted" style={{ margin: '0 0 8px' }}>
+                No activities were added to this track.
+              </p>
+              <small style={{ color: '#E0A050' }}>Activities are locked once a track starts.</small>
+            </div>
+          )
+        ) : (
+          <div className="activity-grid">
+            {activities.map((activity) => (
+              <article
+                className="activity-card"
+                key={activity.id}
+                onClick={() => navigate(`/tracks/${track.id}/activities/${activity.id}`)}
+                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+              >
+                <div
+                  className="activity-card-head"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '12px',
+                  }}
+                >
+                  <span className="activity-icon">
+                    {activity.tracking_type === 'duration' ? (
+                      <Clock3 size={18} />
+                    ) : activity.tracking_type === 'checkbox' ? (
+                      <Check size={18} />
+                    ) : (
+                      <Target size={18} />
+                    )}
+                  </span>
+                  <span className="required-badge">
+                    {activity.is_required ? 'Required' : 'Optional'}
+                  </span>
+                </div>
+
+                <h3>{activity.name}</h3>
+                {activity.description && (
+                  <p
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--muted)',
+                      margin: '4px 0 12px',
+                      minHeight: '36px',
+                    }}
+                  >
+                    {activity.description}
+                  </p>
+                )}
+
+                <div
+                  className="progress-row"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: 'auto',
+                    paddingTop: '10px',
+                    borderTop: '1px solid var(--border)',
+                  }}
+                >
+                  <span style={{ fontSize: '13px', color: 'var(--muted)' }}>Daily target</span>
+                  <strong style={{ fontSize: '13px', color: '#DDE7FF' }}>
+                    {formatActivityTarget(activity)}
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: '12px',
+                    paddingTop: '8px',
+                  }}
+                >
+                  <span
+                    className="card-link"
+                    style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    Open activity <ChevronRight size={14} />
+                  </span>
+
+                  <div
+                    style={{ display: 'flex', gap: '6px' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="icon-button"
+                      title="Edit activity"
+                      onClick={() => setEditingActivity(activity)}
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    {isUpcoming && (
+                      <button
+                        type="button"
+                        className="icon-button"
+                        title="Delete activity"
+                        style={{ color: '#F87171' }}
+                        onClick={() => setDeletingActivity(activity)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
+      {/* Placeholder sections for slices 4-5 */}
       <section className="bottom-grid" style={{ marginTop: '24px' }}>
         <div className="panel">
           <h2>Track calendar</h2>
@@ -644,20 +838,55 @@ export function TrackWorkspace() {
         </div>
       </section>
 
-      {editOpen && (
+      {/* Track Modals */}
+      {editTrackOpen && (
         <EditTrackModal
           track={track}
-          onClose={() => setEditOpen(false)}
-          onSuccess={handleUpdateSuccess}
+          onClose={() => setEditTrackOpen(false)}
+          onSuccess={handleTrackUpdateSuccess}
           userTimezone={user?.timezone}
         />
       )}
 
-      {deleteOpen && (
+      {deleteTrackOpen && (
         <DeleteTrackModal
           trackName={track.name}
-          onClose={() => setDeleteOpen(false)}
-          onConfirm={handleDeleteConfirm}
+          onClose={() => setDeleteTrackOpen(false)}
+          onConfirm={handleTrackDeleteConfirm}
+        />
+      )}
+
+      {/* Activity Modals */}
+      {addActivityOpen && (
+        <AddActivityModal
+          open={addActivityOpen}
+          trackId={track.id}
+          onClose={() => setAddActivityOpen(false)}
+          onSuccess={handleActivityCreated}
+          onTrackLocked={reloadAll}
+        />
+      )}
+
+      {editingActivity && (
+        <EditActivityModal
+          open={Boolean(editingActivity)}
+          trackId={track.id}
+          isUpcoming={isUpcoming}
+          activity={editingActivity}
+          onClose={() => setEditingActivity(null)}
+          onSuccess={handleActivityUpdated}
+          onTrackLocked={reloadAll}
+        />
+      )}
+
+      {deletingActivity && (
+        <DeleteActivityModal
+          open={Boolean(deletingActivity)}
+          trackId={track.id}
+          activity={deletingActivity}
+          onClose={() => setDeletingActivity(null)}
+          onSuccess={handleActivityDeleted}
+          onTrackLocked={reloadAll}
         />
       )}
     </div>

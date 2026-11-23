@@ -6,13 +6,11 @@ import { ActivityDetail } from './features/activities/ActivityDetail'
 import { Analytics } from './features/analytics/Analytics'
 import { ProfileSettings } from './features/settings/ProfileSettings'
 import { AuthPage } from './features/auth/AuthPage'
-import { useLocalTracks } from './hooks/useLocalTracks'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ServerWakeNotice } from './components/common/ServerWakeNotice'
 import './theme.css'
 
 function AppContent() {
-  const [tracks, setTracks] = useLocalTracks()
   const { isAuthenticated, isInitializing } = useAuth()
 
   if (isInitializing) {
@@ -76,12 +74,7 @@ function AppContent() {
         >
           <Route index element={<Dashboard />} />
           <Route path="tracks/:trackId" element={<TrackWorkspace />} />
-          <Route
-            path="tracks/:trackId/activities/:activityId"
-            element={
-              <ActivityDetail tracks={tracks} onUpdate={setTracks} />
-            }
-          />
+          <Route path="tracks/:trackId/activities/:activityId" element={<ActivityDetail />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="profile" element={<ProfileSettings mode="profile" />} />
           <Route path="settings" element={<ProfileSettings mode="settings" />} />
