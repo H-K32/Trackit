@@ -1,8 +1,20 @@
+import { client } from './client.ts'
+
+export interface User {
+  id: number
+  name: string
+  email: string
+  timezone: string
+  email_verified_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
 export interface RegisterPayload {
   name: string
   email: string
   password: string
-  timezone: string
+  timezone?: string
 }
 
 export interface LoginPayload {
@@ -10,34 +22,36 @@ export interface LoginPayload {
   password: string
 }
 
-export interface LaravelAuthError {
-  message?: string
-  errors?: Record<string, string[]>
+export interface AuthResponse {
+  token: string
+  user: User
 }
 
-const wait = (ms = 650) => new Promise((resolve) => setTimeout(resolve, ms))
-
-export async function register(payload: RegisterPayload) {
-  await wait()
-  if (payload.email.toLowerCase() === 'taken@example.com') {
-    throw {
-      message: 'Please correct the highlighted fields.',
-      errors: { email: ['This email address is already registered.'] },
-    } satisfies LaravelAuthError
-  }
-  return {
-    message: 'Account created successfully.',
-    user: { name: payload.name, email: payload.email, timezone: payload.timezone },
-  }
+export interface LogoutResponse {
+  message: string
 }
 
-export async function login(payload: LoginPayload) {
-  await wait()
-  if (payload.email.toLowerCase() === 'invalid@example.com') {
-    throw {
-      message: 'Unable to sign in.',
-      errors: { email: ['These credentials do not match our records.'] },
-    } satisfies LaravelAuthError
-  }
-  return { message: 'Signed in successfully.', user: { email: payload.email } }
+export async function register(payload: RegisterPayload): Promise<AuthResponse> {
+  const timezone = payload.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  return client.post<AuthResponse>('/register', {
+    name: payload.name,
+    email: payload.email,
+    password: payload.password,
+    timezone,
+  }, { skipAuth: true })
+}
+
+export async function login(payload: LoginPayload): Promise<AuthResponse> {
+  return client.post<AuthResponse>('/login', {
+    email: payload.email,
+    password: payload.password,
+  }, { skipAuth: true })
+}
+
+export async function logout(): Promise<LogoutResponse> {
+  return client.post<LogoutResponse>('/logout')
+}
+
+export async function me(): Promise<User> {
+  return client.get<User>('/me')
 }

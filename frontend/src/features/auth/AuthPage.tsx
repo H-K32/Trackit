@@ -1,36 +1,47 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, LockKeyhole, Mail, Target, UserRound } from 'lucide-react'
-import { login, register } from '../../api/auth.ts'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { CloudLightning, Eye, EyeOff, LockKeyhole, Mail, Target, UserRound } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext.tsx'
+import { subscribeSlowNotice } from '../../api/client.ts'
+import type { ApiError } from '../../api/client.ts'
 
 type AuthMode = 'login' | 'register'
 type FieldErrors = Record<string, string[]>
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-interface AuthPageProps {
-  onAuthSuccess?: (user?: unknown) => void
-}
-
-export function AuthPage({ onAuthSuccess }: AuthPageProps = {}) {
+export function AuthPage() {
   const navigate = useNavigate()
+  const { login, register, isAuthenticated } = useAuth()
+
   const [mode, setMode] = useState<AuthMode>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [isSlow, setIsSlow] = useState(false)
   const [clientErrors, setClientErrors] = useState<FieldErrors>({})
   const [serverErrors, setServerErrors] = useState<FieldErrors>({})
   const [serverMessage, setServerMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
+
+  // Cold-start notification listener
+  useEffect(() => {
+    return subscribeSlowNotice((slow) => {
+      setIsSlow(slow)
+    })
+  }, [])
+
+  // If already authenticated, redirect to dashboard
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />
+  }
 
   const resetFeedback = () => {
     setClientErrors({})
     setServerErrors({})
     setServerMessage('')
-    setSuccessMessage('')
   }
 
   const switchMode = (nextMode: AuthMode) => {
@@ -58,28 +69,25 @@ export function AuthPage({ onAuthSuccess }: AuthPageProps = {}) {
 
     setLoading(true)
     try {
-      let result
       if (mode === 'register') {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-        result = await register({ name: name.trim(), email: email.trim(), password, timezone })
+        const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+        await register({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          timezone: detectedTimezone,
+        })
       } else {
-        result = await login({ email: email.trim(), password })
+        await login({
+          email: email.trim(),
+          password,
+        })
       }
-      setSuccessMessage(result.message)
-      localStorage.setItem('trackit_auth', 'true')
-      if (result.user) {
-        localStorage.setItem('trackit_user', JSON.stringify(result.user))
-      }
-      if (onAuthSuccess) {
-        onAuthSuccess(result.user)
-      }
-      setTimeout(() => {
-        navigate('/')
-      }, 400)
+      navigate('/', { replace: true })
     } catch (error: unknown) {
-      const laravelError = error as { message?: string; errors?: FieldErrors }
-      setServerMessage(laravelError.message || 'Something went wrong. Please try again.')
-      setServerErrors(laravelError.errors || {})
+      const apiErr = error as ApiError
+      setServerMessage(apiErr.message || 'Something went wrong. Please try again.')
+      setServerErrors(apiErr.errors || {})
     } finally {
       setLoading(false)
     }
@@ -113,7 +121,28 @@ export function AuthPage({ onAuthSuccess }: AuthPageProps = {}) {
           </div>
 
           {serverMessage && <div className="auth-alert" role="alert"><strong>{serverMessage}</strong></div>}
-          {successMessage && <div className="auth-success" role="status"><strong>{successMessage}</strong></div>}
+
+          {isSlow && (
+            <div
+              className="auth-notice"
+              role="status"
+              style={{
+                borderRadius: '10px',
+                padding: '12px 14px',
+                marginBottom: '16px',
+                fontSize: '13px',
+                background: 'rgba(100, 139, 255, 0.12)',
+                border: '1px solid rgba(100, 139, 255, 0.3)',
+                color: '#C4D7FF',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <CloudLightning size={16} style={{ color: '#648BFF', flexShrink: 0 }} />
+              <span>Waking up the server, this can take a minute...</span>
+            </div>
+          )}
 
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
             {mode === 'register' && (
