@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowLeft,
+  BarChart3,
   CalendarDays,
   Check,
   ChevronRight,
@@ -21,7 +22,11 @@ import { getActivities, formatActivityTarget } from '../../api/activities.ts'
 import type { ActivityItem } from '../../api/activities.ts'
 import { getTrackCalendar } from '../../api/dailyLogs.ts'
 import type { CalendarDayItem } from '../../api/dailyLogs.ts'
+import { getTrackAnalytics } from '../../api/analytics.ts'
+import type { TrackAnalytics } from '../../api/analytics.ts'
 import { DailyLogsSection } from '../dailyLogs/DailyLogsSection.tsx'
+import { TrackCalendar } from '../calendar/TrackCalendar.tsx'
+import { TrackAnalyticsView } from '../analytics/TrackAnalyticsView.tsx'
 import {
   AddActivityModal,
   EditActivityModal,
@@ -34,8 +39,6 @@ import {
   calculateEndDate,
   getTomorrowInTimezone,
   formatTrackStatus,
-  formatDayStatus,
-  getTodayInTimezone,
 } from '../../utils/date.ts'
 
 interface EditTrackModalProps {
@@ -306,12 +309,56 @@ export function TrackWorkspace() {
   const [notFound, setNotFound] = useState(false)
   const [generalError, setGeneralError] = useState<string | null>(null)
 
+  // Workspace active tab and calendar date navigation
+  type WorkspaceTab = 'logs' | 'calendar' | 'analytics' | 'activities'
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('logs')
+  const [selectedLogDate, setSelectedLogDate] = useState<string | undefined>(undefined)
+
+  // Analytics & Calendar state
+  const [analytics, setAnalytics] = useState<TrackAnalytics | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null)
+  const [calendarLoading, setCalendarLoading] = useState(false)
+  const [calendarError, setCalendarError] = useState<string | null>(null)
+
   // Modals state
   const [editTrackOpen, setEditTrackOpen] = useState(false)
   const [deleteTrackOpen, setDeleteTrackOpen] = useState(false)
   const [addActivityOpen, setAddActivityOpen] = useState(false)
   const [editingActivity, setEditingActivity] = useState<ActivityItem | null>(null)
   const [deletingActivity, setDeletingActivity] = useState<ActivityItem | null>(null)
+
+  const fetchCalendar = () => {
+    if (!trackId) return
+    setCalendarLoading(true)
+    setCalendarError(null)
+    getTrackCalendar(trackId)
+      .then((cal) => {
+        setCalendarDays(cal.days)
+        setCalendarLoading(false)
+      })
+      .catch((err: unknown) => {
+        const apiErr = err as ApiError
+        setCalendarError(apiErr.message || 'Failed to load calendar.')
+        setCalendarLoading(false)
+      })
+  }
+
+  const fetchAnalytics = () => {
+    if (!trackId) return
+    setAnalyticsLoading(true)
+    setAnalyticsError(null)
+    getTrackAnalytics(trackId)
+      .then((data) => {
+        setAnalytics(data)
+        setAnalyticsLoading(false)
+      })
+      .catch((err: unknown) => {
+        const apiErr = err as ApiError
+        setAnalyticsError(apiErr.message || 'Failed to load analytics.')
+        setAnalyticsLoading(false)
+      })
+  }
 
   const reloadAll = () => {
     if (!trackId) return
@@ -323,12 +370,14 @@ export function TrackWorkspace() {
       getTrackProgress(trackId).catch(() => null),
       getActivities(trackId).catch(() => []),
       getTrackCalendar(trackId).catch(() => null),
+      getTrackAnalytics(trackId).catch(() => null),
     ])
-      .then(([trackData, progressData, activitiesData, calendarData]) => {
+      .then(([trackData, progressData, activitiesData, calendarData, analyticsData]) => {
         setTrack(trackData)
         setProgress(progressData)
         setActivities(activitiesData)
         if (calendarData) setCalendarDays(calendarData.days)
+        if (analyticsData) setAnalytics(analyticsData)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -342,12 +391,15 @@ export function TrackWorkspace() {
       })
   }
 
-  // Refresh progress & calendar when logs are updated
+  // Refresh progress, calendar & analytics when logs are updated
   const refreshStats = () => {
     if (!trackId) return
     getTrackProgress(trackId).then(setProgress).catch(() => {})
     getTrackCalendar(trackId)
       .then((cal) => setCalendarDays(cal.days))
+      .catch(() => {})
+    getTrackAnalytics(trackId)
+      .then(setAnalytics)
       .catch(() => {})
   }
 
@@ -362,13 +414,15 @@ export function TrackWorkspace() {
       getTrackProgress(trackId).catch(() => null),
       getActivities(trackId).catch(() => []),
       getTrackCalendar(trackId).catch(() => null),
+      getTrackAnalytics(trackId).catch(() => null),
     ])
-      .then(([trackData, progressData, activitiesData, calendarData]) => {
+      .then(([trackData, progressData, activitiesData, calendarData, analyticsData]) => {
         if (!ignore) {
           setTrack(trackData)
           setProgress(progressData)
           setActivities(activitiesData)
           if (calendarData) setCalendarDays(calendarData.days)
+          if (analyticsData) setAnalytics(analyticsData)
           setLoading(false)
         }
       })
@@ -497,7 +551,6 @@ export function TrackWorkspace() {
       : '#94A3B8'
 
   const userTz = user?.timezone
-  const today = getTodayInTimezone(userTz)
 
   return (
     <div className="page workspace">
@@ -658,268 +711,481 @@ export function TrackWorkspace() {
         </section>
       )}
 
-      {/* Slice 4: Daily Logs Section (Today / Day View) */}
-      <DailyLogsSection
-        track={track}
-        userTimezone={userTz}
-        calendarDays={calendarDays}
-        onStatsUpdated={refreshStats}
-        onScrollToActivities={scrollToActivities}
-      />
+      {/* Workspace Navigation Tabs */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '8px',
+          margin: '28px 0 16px',
+          borderBottom: '1px solid var(--border)',
+          paddingBottom: '12px',
+          overflowX: 'auto',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('logs')}
+          className={`button ${activeTab === 'logs' ? 'primary' : 'secondary'}`}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Clock3 size={15} /> Daily Log
+        </button>
 
-      {/* Activities Section */}
-      <section ref={activitiesRef} style={{ marginTop: '24px' }}>
-        <div className="section-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h2>Activities</h2>
-            <p>
-              {activities.length} {activities.length === 1 ? 'activity' : 'activities'} on this track (max 20)
-            </p>
-          </div>
-          {!isUpcoming ? (
-            <span
-              style={{
-                fontSize: '12px',
-                color: '#E0A050',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'rgba(245, 158, 11, 0.1)',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                border: '1px solid rgba(245, 158, 11, 0.25)',
-              }}
-            >
-              <Lock size={14} /> Activities are locked once a track starts
-            </span>
-          ) : (
-            <button
-              type="button"
-              className="button primary"
-              onClick={() => setAddActivityOpen(true)}
-            >
-              <CirclePlus size={16} /> Add Activity
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('calendar')
+            fetchCalendar()
+          }}
+          className={`button ${activeTab === 'calendar' ? 'primary' : 'secondary'}`}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <CalendarDays size={15} /> Calendar Grid
+        </button>
 
-        {activities.length === 0 ? (
-          isUpcoming ? (
-            <div
-              className="panel"
-              style={{
-                padding: '32px 24px',
-                textAlign: 'center',
-                border: '1px solid rgba(245, 158, 11, 0.4)',
-                background: 'rgba(245, 158, 11, 0.08)',
-                borderRadius: '16px',
-              }}
-            >
-              <div
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('analytics')
+            fetchAnalytics()
+          }}
+          className={`button ${activeTab === 'analytics' ? 'primary' : 'secondary'}`}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <BarChart3 size={15} /> Analytics
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('activities')}
+          className={`button ${activeTab === 'activities' ? 'primary' : 'secondary'}`}
+          style={{ height: '38px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Target size={15} /> Activities ({activities.length})
+        </button>
+      </div>
+
+      {/* Tab: Daily Logs */}
+      {activeTab === 'logs' && (
+        <>
+          <DailyLogsSection
+            track={track}
+            userTimezone={userTz}
+            calendarDays={calendarDays}
+            onStatsUpdated={refreshStats}
+            onScrollToActivities={scrollToActivities}
+            selectedDate={selectedLogDate}
+            onSelectDate={setSelectedLogDate}
+          />
+
+          {/* Activities list directly under daily logs for quick reference */}
+          <section ref={activitiesRef} style={{ marginTop: '28px' }}>
+            <div className="section-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h2>Activities</h2>
+                <p>
+                  {activities.length} {activities.length === 1 ? 'activity' : 'activities'} configured on this track
+                </p>
+              </div>
+              {!isUpcoming ? (
+                <span
+                  style={{
+                    fontSize: '12px',
+                    color: '#E0A050',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                  }}
+                >
+                  <Lock size={14} /> Activities locked once track starts
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => setAddActivityOpen(true)}
+                >
+                  <CirclePlus size={16} /> Add Activity
+                </button>
+              )}
+            </div>
+
+            {activities.length === 0 ? (
+              isUpcoming ? (
+                <div
+                  className="panel"
+                  style={{
+                    padding: '32px 24px',
+                    textAlign: 'center',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    borderRadius: '16px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      padding: '12px',
+                      background: 'rgba(245, 158, 11, 0.15)',
+                      borderRadius: '50%',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <AlertTriangle size={24} color="#F59E0B" />
+                  </div>
+                  <h3 style={{ margin: '0 0 8px', color: '#FCD34D' }}>No activities configured yet</h3>
+                  <p style={{ margin: '0 0 20px', color: '#FDE68A', fontSize: '14px' }}>
+                    Add at least one activity before the track starts, because they can&apos;t be added later.
+                  </p>
+                  <button
+                    type="button"
+                    className="button primary"
+                    onClick={() => setAddActivityOpen(true)}
+                  >
+                    <CirclePlus size={18} /> Add Your First Activity
+                  </button>
+                </div>
+              ) : (
+                <div className="panel" style={{ textAlign: 'center', padding: '36px 20px' }}>
+                  <p className="muted" style={{ margin: '0 0 8px' }}>
+                    No activities were added to this track.
+                  </p>
+                  <small style={{ color: '#E0A050' }}>Activities are locked once a track starts.</small>
+                </div>
+              )
+            ) : (
+              <div className="activity-grid">
+                {activities.map((activity) => (
+                  <article
+                    className="activity-card"
+                    key={activity.id}
+                    onClick={() => navigate(`/tracks/${track.id}/activities/${activity.id}`)}
+                    style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                  >
+                    <div
+                      className="activity-card-head"
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      <span className="activity-icon">
+                        {activity.tracking_type === 'duration' ? (
+                          <Clock3 size={18} />
+                        ) : activity.tracking_type === 'checkbox' ? (
+                          <Check size={18} />
+                        ) : (
+                          <Target size={18} />
+                        )}
+                      </span>
+                      <span className="required-badge">
+                        {activity.is_required ? 'Required' : 'Optional'}
+                      </span>
+                    </div>
+
+                    <h3>{activity.name}</h3>
+                    {activity.description && (
+                      <p
+                        style={{
+                          fontSize: '13px',
+                          color: 'var(--muted)',
+                          margin: '4px 0 12px',
+                          minHeight: '36px',
+                        }}
+                      >
+                        {activity.description}
+                      </p>
+                    )}
+
+                    <div
+                      className="progress-row"
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginTop: 'auto',
+                        paddingTop: '10px',
+                        borderTop: '1px solid var(--border)',
+                      }}
+                    >
+                      <span style={{ fontSize: '13px', color: 'var(--muted)' }}>Daily target</span>
+                      <strong style={{ fontSize: '13px', color: '#DDE7FF' }}>
+                        {formatActivityTarget(activity)}
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginTop: '12px',
+                        paddingTop: '8px',
+                      }}
+                    >
+                      <span
+                        className="card-link"
+                        style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        Open activity <ChevronRight size={14} />
+                      </span>
+
+                      <div
+                        style={{ display: 'flex', gap: '6px' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="icon-button"
+                          title="Edit activity"
+                          onClick={() => setEditingActivity(activity)}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        {isUpcoming && (
+                          <button
+                            type="button"
+                            className="icon-button"
+                            title="Delete activity"
+                            style={{ color: '#F87171' }}
+                            onClick={() => setDeletingActivity(activity)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {/* Tab: Calendar Month Grid */}
+      {activeTab === 'calendar' && (
+        <TrackCalendar
+          track={track}
+          calendarDays={calendarDays}
+          userTimezone={userTz}
+          loading={calendarLoading}
+          error={calendarError}
+          onRetry={fetchCalendar}
+          selectedDate={selectedLogDate}
+          onSelectDate={(date) => {
+            setSelectedLogDate(date)
+            setActiveTab('logs')
+          }}
+        />
+      )}
+
+      {/* Tab: Analytics View */}
+      {activeTab === 'analytics' && (
+        <TrackAnalyticsView
+          track={track}
+          analytics={analytics}
+          progress={progress}
+          loading={analyticsLoading}
+          error={analyticsError}
+          onRetry={fetchAnalytics}
+        />
+      )}
+
+      {/* Tab: Activities Only */}
+      {activeTab === 'activities' && (
+        <section ref={activitiesRef} style={{ marginTop: '20px' }}>
+          <div className="section-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h2>Activities ({activities.length})</h2>
+              <p>Configure and manage tracking targets for this challenge track</p>
+            </div>
+            {!isUpcoming ? (
+              <span
                 style={{
+                  fontSize: '12px',
+                  color: '#E0A050',
                   display: 'inline-flex',
-                  padding: '12px',
-                  background: 'rgba(245, 158, 11, 0.15)',
-                  borderRadius: '50%',
-                  marginBottom: '12px',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
                 }}
               >
-                <AlertTriangle size={24} color="#F59E0B" />
-              </div>
-              <h3 style={{ margin: '0 0 8px', color: '#FCD34D' }}>No activities configured yet</h3>
-              <p style={{ margin: '0 0 20px', color: '#FDE68A', fontSize: '14px' }}>
-                Add at least one activity before the track starts, because they can&apos;t be added later.
-              </p>
+                <Lock size={14} /> Activities locked once track starts
+              </span>
+            ) : (
               <button
                 type="button"
                 className="button primary"
                 onClick={() => setAddActivityOpen(true)}
               >
-                <CirclePlus size={18} /> Add Your First Activity
+                <CirclePlus size={16} /> Add Activity
               </button>
-            </div>
-          ) : (
-            <div className="panel" style={{ textAlign: 'center', padding: '36px 20px' }}>
-              <p className="muted" style={{ margin: '0 0 8px' }}>
-                No activities were added to this track.
-              </p>
-              <small style={{ color: '#E0A050' }}>Activities are locked once a track starts.</small>
-            </div>
-          )
-        ) : (
-          <div className="activity-grid">
-            {activities.map((activity) => (
-              <article
-                className="activity-card"
-                key={activity.id}
-                onClick={() => navigate(`/tracks/${track.id}/activities/${activity.id}`)}
-                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+            )}
+          </div>
+
+          {activities.length === 0 ? (
+            isUpcoming ? (
+              <div
+                className="panel"
+                style={{
+                  padding: '32px 24px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  borderRadius: '16px',
+                }}
               >
                 <div
-                  className="activity-card-head"
                   style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    display: 'inline-flex',
+                    padding: '12px',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    borderRadius: '50%',
                     marginBottom: '12px',
                   }}
                 >
-                  <span className="activity-icon">
-                    {activity.tracking_type === 'duration' ? (
-                      <Clock3 size={18} />
-                    ) : activity.tracking_type === 'checkbox' ? (
-                      <Check size={18} />
-                    ) : (
-                      <Target size={18} />
-                    )}
-                  </span>
-                  <span className="required-badge">
-                    {activity.is_required ? 'Required' : 'Optional'}
-                  </span>
+                  <AlertTriangle size={24} color="#F59E0B" />
                 </div>
-
-                <h3>{activity.name}</h3>
-                {activity.description && (
-                  <p
+                <h3 style={{ margin: '0 0 8px', color: '#FCD34D' }}>No activities configured yet</h3>
+                <p style={{ margin: '0 0 20px', color: '#FDE68A', fontSize: '14px' }}>
+                  Add at least one activity before the track starts, because they can&apos;t be added later.
+                </p>
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={() => setAddActivityOpen(true)}
+                >
+                  <CirclePlus size={18} /> Add Your First Activity
+                </button>
+              </div>
+            ) : (
+              <div className="panel" style={{ textAlign: 'center', padding: '36px 20px' }}>
+                <p className="muted" style={{ margin: '0 0 8px' }}>
+                  No activities were added to this track.
+                </p>
+                <small style={{ color: '#E0A050' }}>Activities are locked once a track starts.</small>
+              </div>
+            )
+          ) : (
+            <div className="activity-grid">
+              {activities.map((activity) => (
+                <article
+                  className="activity-card"
+                  key={activity.id}
+                  onClick={() => navigate(`/tracks/${track.id}/activities/${activity.id}`)}
+                  style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                >
+                  <div
+                    className="activity-card-head"
                     style={{
-                      fontSize: '13px',
-                      color: 'var(--muted)',
-                      margin: '4px 0 12px',
-                      minHeight: '36px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '12px',
                     }}
                   >
-                    {activity.description}
-                  </p>
-                )}
+                    <span className="activity-icon">
+                      {activity.tracking_type === 'duration' ? (
+                        <Clock3 size={18} />
+                      ) : activity.tracking_type === 'checkbox' ? (
+                        <Check size={18} />
+                      ) : (
+                        <Target size={18} />
+                      )}
+                    </span>
+                    <span className="required-badge">
+                      {activity.is_required ? 'Required' : 'Optional'}
+                    </span>
+                  </div>
 
-                <div
-                  className="progress-row"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: 'auto',
-                    paddingTop: '10px',
-                    borderTop: '1px solid var(--border)',
-                  }}
-                >
-                  <span style={{ fontSize: '13px', color: 'var(--muted)' }}>Daily target</span>
-                  <strong style={{ fontSize: '13px', color: '#DDE7FF' }}>
-                    {formatActivityTarget(activity)}
-                  </strong>
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: '12px',
-                    paddingTop: '8px',
-                  }}
-                >
-                  <span
-                    className="card-link"
-                    style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    Open activity <ChevronRight size={14} />
-                  </span>
+                  <h3>{activity.name}</h3>
+                  {activity.description && (
+                    <p
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--muted)',
+                        margin: '4px 0 12px',
+                        minHeight: '36px',
+                      }}
+                    >
+                      {activity.description}
+                    </p>
+                  )}
 
                   <div
-                    style={{ display: 'flex', gap: '6px' }}
-                    onClick={(e) => e.stopPropagation()}
+                    className="progress-row"
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginTop: 'auto',
+                      paddingTop: '10px',
+                      borderTop: '1px solid var(--border)',
+                    }}
                   >
-                    <button
-                      type="button"
-                      className="icon-button"
-                      title="Edit activity"
-                      onClick={() => setEditingActivity(activity)}
+                    <span style={{ fontSize: '13px', color: 'var(--muted)' }}>Daily target</span>
+                    <strong style={{ fontSize: '13px', color: '#DDE7FF' }}>
+                      {formatActivityTarget(activity)}
+                    </strong>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginTop: '12px',
+                      paddingTop: '8px',
+                    }}
+                  >
+                    <span
+                      className="card-link"
+                      style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                     >
-                      <Pencil size={14} />
-                    </button>
-                    {isUpcoming && (
+                      Open activity <ChevronRight size={14} />
+                    </span>
+
+                    <div
+                      style={{ display: 'flex', gap: '6px' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         type="button"
                         className="icon-button"
-                        title="Delete activity"
-                        style={{ color: '#F87171' }}
-                        onClick={() => setDeletingActivity(activity)}
+                        title="Edit activity"
+                        onClick={() => setEditingActivity(activity)}
                       >
-                        <Trash2 size={14} />
+                        <Pencil size={14} />
                       </button>
-                    )}
+                      {isUpcoming && (
+                        <button
+                          type="button"
+                          className="icon-button"
+                          title="Delete activity"
+                          style={{ color: '#F87171' }}
+                          onClick={() => setDeletingActivity(activity)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Live Track Calendar Strip */}
-      <section className="panel" style={{ marginTop: '24px', padding: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '16px' }}>Track calendar</h2>
-            <p className="muted" style={{ margin: '2px 0 0', fontSize: '13px' }}>
-              Full {track.duration_days}-day challenge schedule
-            </p>
-          </div>
-        </div>
-
-        <div
-          className="calendar-strip"
-          style={{
-            display: 'flex',
-            gap: '8px',
-            overflowX: 'auto',
-            paddingBottom: '8px',
-          }}
-        >
-          {calendarDays.length > 0 ? (
-            calendarDays.map((d) => {
-              const statusCfg = formatDayStatus(d.day_status)
-              const isTodayDate = d.date === today
-
-              return (
-                <div
-                  key={d.date}
-                  className={`calendar-day-item ${isTodayDate ? 'today' : ''}`}
-                  style={{
-                    flex: '0 0 54px',
-                    textAlign: 'center',
-                    padding: '8px 4px',
-                    borderRadius: '10px',
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: isTodayDate
-                      ? '1px solid #60A5FA'
-                      : '1px solid var(--border)',
-                  }}
-                  title={`${formatYmd(d.date)}: ${statusCfg.label} (${Math.round(d.completion_percentage)}%)`}
-                >
-                  <small style={{ display: 'block', fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>
-                    {d.day_number}
-                  </small>
-                  <i
-                    style={{
-                      width: '10px',
-                      height: '10px',
-                      borderRadius: '50%',
-                      display: 'inline-block',
-                      background: statusCfg.color,
-                    }}
-                  />
-                  <span style={{ display: 'block', fontSize: '10px', marginTop: '4px', color: 'var(--text)' }}>
-                    {Math.round(d.completion_percentage)}%
-                  </span>
-                </div>
-              )
-            })
-          ) : (
-            <p className="muted" style={{ fontSize: '13px' }}>No calendar data available.</p>
+                </article>
+              ))}
+            </div>
           )}
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Track Modals */}
       {editTrackOpen && (

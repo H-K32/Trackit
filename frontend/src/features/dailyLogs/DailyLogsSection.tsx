@@ -31,6 +31,8 @@ interface DailyLogsSectionProps {
   calendarDays: CalendarDayItem[]
   onStatsUpdated: () => void
   onScrollToActivities?: () => void
+  selectedDate?: string
+  onSelectDate?: (date: string) => void
 }
 
 type RowStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -46,6 +48,8 @@ export function DailyLogsSection({
   calendarDays,
   onStatsUpdated,
   onScrollToActivities,
+  selectedDate: externalSelectedDate,
+  onSelectDate,
 }: DailyLogsSectionProps) {
   const today = getTodayInTimezone(userTimezone)
 
@@ -60,7 +64,17 @@ export function DailyLogsSection({
     return track.end_date
   }
 
-  const [selectedDate, setSelectedDate] = useState<string>(computeInitialDate)
+  const [internalSelectedDate, setInternalSelectedDate] = useState<string>(computeInitialDate)
+  const selectedDate = externalSelectedDate !== undefined ? externalSelectedDate : internalSelectedDate
+
+  const updateSelectedDate = (newDate: string) => {
+    if (onSelectDate) {
+      onSelectDate(newDate)
+    } else {
+      setInternalSelectedDate(newDate)
+    }
+  }
+
   const [overview, setOverview] = useState<DailyLogOverviewEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -152,20 +166,20 @@ export function DailyLogsSection({
   const handlePrevDay = () => {
     const prev = addDaysToYmd(selectedDate, -1)
     if (prev >= track.start_date) {
-      setSelectedDate(prev)
+      updateSelectedDate(prev)
     }
   }
 
   const handleNextDay = () => {
     const next = addDaysToYmd(selectedDate, 1)
     if (next <= track.end_date) {
-      setSelectedDate(next)
+      updateSelectedDate(next)
     }
   }
 
   const handleGoToday = () => {
     if (today >= track.start_date && today <= track.end_date) {
-      setSelectedDate(today)
+      updateSelectedDate(today)
     }
   }
 

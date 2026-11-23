@@ -171,3 +171,62 @@ export function formatDayStatus(status: string): { label: string; color: string;
       return { label: status || 'Unknown', color: '#94A3B8', bg: 'rgba(148, 163, 184, 0.12)' }
   }
 }
+
+export interface TrackMonthInfo {
+  year: number
+  month: number
+  key: string // e.g. "2026-06"
+  label: string // e.g. "June 2026"
+}
+
+/**
+ * Returns all month intervals spanned by a track (from start_date to end_date).
+ * Used for Month Grid Calendar navigation.
+ */
+export function getTrackMonths(startDate: string, endDate: string): TrackMonthInfo[] {
+  const start = parseYmd(startDate)
+  const end = parseYmd(endDate)
+  if (!start || !end) return []
+
+  const months: TrackMonthInfo[] = []
+  let y = start.year
+  let m = start.month
+
+  while (y < end.year || (y === end.year && m <= end.month)) {
+    const key = `${y}-${String(m).padStart(2, '0')}`
+    const labelDate = new Date(y, m - 1, 1)
+    const label = labelDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    months.push({ year: y, month: m, key, label })
+    m++
+    if (m > 12) {
+      m = 1
+      y++
+    }
+  }
+  return months
+}
+
+/**
+ * Returns the number of days in a given year and month (1-12).
+ */
+export function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+/**
+ * Returns the day of the week for the 1st of a given month (0 = Sunday, 1 = Monday, ..., 6 = Saturday).
+ */
+export function getFirstDayOfWeek(year: number, month: number): number {
+  return new Date(year, month - 1, 1).getDay()
+}
+
+/**
+ * Formats a year and month into "Month Year" (e.g. "June 2026").
+ */
+export function formatMonthYear(year: number, month: number): string {
+  return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
