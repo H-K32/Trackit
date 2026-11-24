@@ -158,8 +158,9 @@ export function AppShell({ onLogout }: { onLogout?: () => void } = {}) {
 
           <NavLink
             to="/profile"
-            className="profile"
+            className={({ isActive }) => `profile ${isActive ? 'active' : ''}`}
             onClick={() => setIsMobileDrawerOpen(false)}
+            style={{ background: 'transparent', border: 'none' }}
           >
             <span className="avatar">{initials}</span>
             <span>
@@ -172,6 +173,7 @@ export function AppShell({ onLogout }: { onLogout?: () => void } = {}) {
             type="button"
             className="nav-item logout-button"
             onClick={handleLogout}
+            style={{ background: 'transparent', border: 'none' }}
           >
             <LogOut size={18} />
             <span>Log out</span>

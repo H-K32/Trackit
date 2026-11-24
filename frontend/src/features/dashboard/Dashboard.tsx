@@ -6,6 +6,7 @@ import { getTracks, createTrack } from '../../api/tracks.ts'
 import type { TrackItem } from '../../api/tracks.ts'
 import { getTrackCalendar } from '../../api/dailyLogs.ts'
 import type { CalendarDayItem } from '../../api/dailyLogs.ts'
+import { StreakBuddiesModal, StreakBuddiesButton } from '../../components/common/StreakBuddiesModal.tsx'
 import { useAuth } from '../../context/AuthContext.tsx'
 import type { ApiError } from '../../api/client.ts'
 import {
@@ -198,6 +199,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [streakBuddiesOpen, setStreakBuddiesOpen] = useState(false)
 
   const loadTrackCalendar = (trackList: TrackItem[]) => {
     const active = trackList.find((t) => t.status === 'active') || (trackList.length > 0 ? trackList[0] : null)
@@ -287,10 +289,13 @@ export function Dashboard() {
           <h1>{greeting}, {userDisplayName}</h1>
           <p className="muted">Turn ambitious goals into a clear daily practice.</p>
         </div>
-        <button className="button primary" onClick={() => setModalOpen(true)}>
-          <Plus size={18} />
-          Create Track
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <StreakBuddiesButton onClick={() => setStreakBuddiesOpen(true)} />
+          <button className="button primary" onClick={() => setModalOpen(true)}>
+            <Plus size={18} />
+            Create Track
+          </button>
+        </div>
       </header>
 
       <section>
@@ -500,6 +505,11 @@ export function Dashboard() {
           userTimezone={user?.timezone}
         />
       )}
+
+      <StreakBuddiesModal
+        isOpen={streakBuddiesOpen}
+        onClose={() => setStreakBuddiesOpen(false)}
+      />
     </div>
   )
 }

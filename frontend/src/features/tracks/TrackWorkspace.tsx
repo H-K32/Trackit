@@ -32,6 +32,7 @@ import {
   EditActivityModal,
   DeleteActivityModal,
 } from '../activities/ActivityModals.tsx'
+import { StreakBuddiesModal, StreakBuddiesButton } from '../../components/common/StreakBuddiesModal.tsx'
 import { useAuth } from '../../context/AuthContext.tsx'
 import type { ApiError } from '../../api/client.ts'
 import {
@@ -327,6 +328,7 @@ export function TrackWorkspace() {
   const [addActivityOpen, setAddActivityOpen] = useState(false)
   const [editingActivity, setEditingActivity] = useState<ActivityItem | null>(null)
   const [deletingActivity, setDeletingActivity] = useState<ActivityItem | null>(null)
+  const [streakBuddiesOpen, setStreakBuddiesOpen] = useState(false)
 
   const fetchCalendar = () => {
     if (!trackId) return
@@ -610,6 +612,7 @@ export function TrackWorkspace() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <StreakBuddiesButton onClick={() => setStreakBuddiesOpen(true)} />
           <button type="button" className="button secondary" onClick={() => setEditTrackOpen(true)}>
             <Pencil size={16} />
             Edit Track
@@ -1238,6 +1241,11 @@ export function TrackWorkspace() {
           onTrackLocked={reloadAll}
         />
       )}
+
+      <StreakBuddiesModal
+        isOpen={streakBuddiesOpen}
+        onClose={() => setStreakBuddiesOpen(false)}
+      />
     </div>
   )
 }
