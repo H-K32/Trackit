@@ -1191,3 +1191,61 @@ Returns an array of all activities on the track. If no log exists for an activit
   - `401 Unauthorized`: Unauthenticated.
   - `403 Forbidden`: Unauthorized user.
   - `404 Not Found`: Track does not exist.
+
+---
+
+## 8. Plans & Notes Endpoints
+
+### 8.1 List Plans
+- **Method**: `GET`
+- **URL**: `/api/plans`
+- **Authentication**: Authenticated
+- **Query Parameters**:
+  | Param | Type | Rules | Description |
+  |---|---|---|---|
+  | `date` | string | optional, `YYYY-MM-DD` | Filter plans tagged with a specific `plan_date` |
+- **Success Status**: `200 OK`
+- **Notes**: Returns the authenticated user's plans ordered by pinned first (`is_pinned` descending), then most recently updated (`updated_at` descending).
+
+---
+
+### 8.2 Create Plan
+- **Method**: `POST`
+- **URL**: `/api/plans`
+- **Authentication**: Authenticated
+- **Request Body**:
+  | Field | Type | Rules | Description |
+  |---|---|---|---|
+  | `title` | string | `required`, `string`, `max:255` | Plan or note title (e.g., `Tomorrow's Plan`) |
+  | `content` | string\|null | `nullable`, `string`, `max:20000` | Freeform plan/note text (supports `- [ ] ` / `- [x] ` checklist lines) |
+  | `plan_date` | string\|null | `nullable`, `date_format:Y-m-d` | Optional calendar date tag (`YYYY-MM-DD`) |
+  | `is_pinned` | boolean | `sometimes`, `boolean` | Optional pin flag (default `false`) |
+- **Success Status**: `201 Created`
+
+---
+
+### 8.3 Get Plan
+- **Method**: `GET`
+- **URL**: `/api/plans/{plan}`
+- **Authentication**: Authenticated
+- **Success Status**: `200 OK`
+- **Error Codes**: `401`, `403`, `404`
+
+---
+
+### 8.4 Update Plan
+- **Method**: `PATCH` or `PUT`
+- **URL**: `/api/plans/{plan}`
+- **Authentication**: Authenticated
+- **Request Body**: Same fields as Create Plan, all `sometimes`.
+- **Success Status**: `200 OK`
+- **Error Codes**: `401`, `403`, `404`, `422`
+
+---
+
+### 8.5 Delete Plan
+- **Method**: `DELETE`
+- **URL**: `/api/plans/{plan}`
+- **Authentication**: Authenticated
+- **Success Status**: `204 No Content`
+- **Error Codes**: `401`, `403`, `404`

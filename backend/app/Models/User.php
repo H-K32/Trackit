@@ -30,4 +30,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Track::class);
     }
+
+    public function plans(): HasMany
+    {
+        return $this->hasMany(Plan::class);
+    }
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ActivityTemplateController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DailyLogController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\TrackProgressController;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/me',    [AuthController::class, 'updateMe']);
 
     Route::apiResource('tracks', TrackController::class);
+    Route::apiResource('plans', PlanController::class);
 
     Route::apiResource('tracks.activities', ActivityController::class)
         ->scoped();

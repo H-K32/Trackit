@@ -4,6 +4,7 @@ import { Dashboard } from './features/dashboard/Dashboard'
 import { TrackWorkspace } from './features/tracks/TrackWorkspace'
 import { ActivityDetail } from './features/activities/ActivityDetail'
 import { Analytics } from './features/analytics/Analytics'
+import { PlansPage } from './features/plans/PlansPage'
 import { ProfileSettings } from './features/settings/ProfileSettings'
 import { AuthPage } from './features/auth/AuthPage'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -76,6 +77,7 @@ function AppContent() {
           <Route index element={<Dashboard />} />
           <Route path="tracks/:trackId" element={<TrackWorkspace />} />
           <Route path="tracks/:trackId/activities/:activityId" element={<ActivityDetail />} />
+          <Route path="plans" element={<PlansPage />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="profile" element={<ProfileSettings mode="profile" />} />
           <Route path="settings" element={<ProfileSettings mode="settings" />} />

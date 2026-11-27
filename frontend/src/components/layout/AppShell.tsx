@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { BarChart3, LayoutDashboard, LogOut, Menu, Palette, Settings, Target, X } from 'lucide-react'
+import { BarChart3, LayoutDashboard, LogOut, Menu, NotebookPen, Palette, Settings, Target, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 
@@ -12,6 +12,7 @@ export function AppShell({ onLogout }: { onLogout?: () => void } = {}) {
 
   const nav = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/plans', label: 'Plans', icon: NotebookPen },
     { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   ]
 
